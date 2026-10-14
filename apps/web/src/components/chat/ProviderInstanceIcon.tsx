@@ -2,7 +2,8 @@ import { type CSSProperties, memo } from "react";
 import { type ProviderDriverKind } from "@t3tools/contracts";
 import { providerInstanceInitials } from "@t3tools/client-runtime/state/provider-instance-display";
 
-import { PROVIDER_ICON_BY_PROVIDER } from "./providerIconUtils";
+import { isHermesInstance, PROVIDER_ICON_BY_PROVIDER } from "./providerIconUtils";
+import { HermesIcon } from "../Icons";
 import { cn } from "~/lib/utils";
 
 export { providerInstanceInitials };
@@ -19,7 +20,9 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
   statusDotClassName?: string;
   indicatorBackground?: string;
 }) {
-  const Icon = PROVIDER_ICON_BY_PROVIDER[props.driverKind] ?? null;
+  const Icon = isHermesInstance(props.driverKind, props.displayName)
+    ? HermesIcon
+    : (PROVIDER_ICON_BY_PROVIDER[props.driverKind] ?? null);
   const indicatorBackground = props.indicatorBackground ?? "var(--card)";
   const accentStyle = props.accentColor
     ? ({ "--provider-accent": props.accentColor } as CSSProperties)

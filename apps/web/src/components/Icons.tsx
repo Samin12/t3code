@@ -1,6 +1,13 @@
 import React, { type SVGProps, useId } from "react";
 import { cn } from "~/lib/utils";
+import hermesGirlUrl from "~/assets/hermes-girl.png";
 export type Icon = React.FC<SVGProps<SVGSVGElement>>;
+
+export const HermesIcon: Icon = (props) => (
+  <svg viewBox="0 0 24 24" {...props}>
+    <image href={hermesGirlUrl} width="24" height="24" />
+  </svg>
+);
 
 export const UltrafastIcon: Icon = (props) => (
   <svg viewBox="0 0 24 24" fill="currentColor" {...props}>

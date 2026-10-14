@@ -18,6 +18,11 @@ export const PROVIDER_ICON_BY_PROVIDER: Partial<Record<ProviderDriverKind, Icon>
   [ProviderDriverKind.make("antigravity")]: AntigravityIcon,
 };
 
+// This local Hermes ACP instance uses the Grok transport, not its branding.
+export function isHermesInstance(driverKind: ProviderDriverKind, displayName: string): boolean {
+  return driverKind === "grok" && displayName.trim().toLowerCase() === "hermes";
+}
+
 export type ModelEsque = {
   slug: string;
   name: string;

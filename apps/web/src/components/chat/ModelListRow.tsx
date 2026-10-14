@@ -5,8 +5,10 @@ import {
   getDisplayModelName,
   getTriggerDisplayModelLabel,
   type ModelEsque,
+  isHermesInstance,
   PROVIDER_ICON_BY_PROVIDER,
 } from "./providerIconUtils";
+import { HermesIcon } from "../Icons";
 import { ComboboxItem } from "../ui/combobox";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -41,7 +43,9 @@ export const ModelListRow = memo(function ModelListRow(props: {
   disabledReason?: string | null;
   onToggleFavorite: () => void;
 }) {
-  const ProviderIcon = PROVIDER_ICON_BY_PROVIDER[props.driverKind] ?? null;
+  const ProviderIcon = isHermesInstance(props.driverKind, props.providerDisplayName)
+    ? HermesIcon
+    : (PROVIDER_ICON_BY_PROVIDER[props.driverKind] ?? null);
   const providerLabel = props.model.subProvider
     ? `${props.providerDisplayName} · ${props.model.subProvider}`
     : props.providerDisplayName;

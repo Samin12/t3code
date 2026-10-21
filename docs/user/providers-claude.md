@@ -30,9 +30,17 @@ location intact. Use the same variable for the login command. Setting `HOME`
 instead can put credentials where this provider will not find them.
 
 Check the account reported in provider settings after signing in. Existing
-threads can switch only between Claude instances with the same config directory.
+threads can resume only between Claude instances with the same config directory.
 Separate account directories stay isolated, including their local conversation
 state. Claude does not have Codex's shared-home and shadow-home arrangement.
+
+To keep working after a usage limit, open the model picker and choose the other
+account, right-click the thread and choose **Hand off to another model…**, or
+search that action in the command palette. `mod+alt+shift+h` opens the same choice
+for the thread you are reading. T3 asks you
+to pick the model, leaves the current thread on its account, and starts a new
+thread with a handoff summary. The new account does not receive the old Claude
+session, so it should re-read the repo.
 
 For presets that differ only in API keys or endpoints, use the instance's
 **Environment variables**. Variable assignments do not belong in **Launch arguments**.

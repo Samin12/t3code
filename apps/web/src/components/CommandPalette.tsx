@@ -52,6 +52,7 @@ import {
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeftIcon,
+  ArrowRightLeftIcon,
   ChartNoAxesColumnIcon,
   CheckIcon,
   ChevronRightIcon,
@@ -82,6 +83,7 @@ import {
 } from "react";
 import type { LegendListRef } from "@legendapp/list/react";
 import { useAtomValue } from "@effect/atom-react";
+import { requestProviderHandoff } from "../providerHandoffBus";
 
 import { isDesktopLocalConnectionTarget } from "../connection/desktopLocal";
 import { useDesktopLocalBootstraps } from "../connection/useDesktopLocalBootstraps";
@@ -1212,6 +1214,18 @@ function OpenCommandPaletteDialog(props: {
     });
   }
 
+  if (activeThread !== null) {
+    const threadRef = scopeThreadRef(activeThread.environmentId, activeThread.id);
+    actionItems.push({
+      kind: "action",
+      value: "action:handoff-thread",
+      searchTerms: ["hand off", "handoff", "switch model", "switch provider", "switch account"],
+      title: "Hand off to another model",
+      icon: <ArrowRightLeftIcon className={ITEM_ICON_CLASS} />,
+      shortcutCommand: "thread.handoff",
+      run: async () => requestProviderHandoff({ threadRef }),
+    });
+  }
   const promptLinkTarget = paletteRouteTarget
     ? paletteRouteTarget.kind === "server"
       ? paletteRouteTarget.threadRef
@@ -2330,6 +2344,16 @@ function OpenCommandPaletteDialog(props: {
           title: "Thread search is unavailable on this server.",
           description: "Update the server to enable it.",
         });
+      return;
+    }
+    if (command === "thread.handoff") {
+      event.preventDefault();
+      event.stopPropagation();
+      if (activeThread === null) return;
+      setOpen(false);
+      requestProviderHandoff({
+        threadRef: scopeThreadRef(activeThread.environmentId, activeThread.id),
+      });
       return;
     }
 

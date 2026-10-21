@@ -31,6 +31,7 @@ const DevicePanel = lazy(() =>
   import("../device/DevicePanel").then((module) => ({ default: module.DevicePanel })),
 );
 const FilePreviewPanel = lazy(() => import("../files/FilePreviewPanel"));
+const HeptabasePanel = lazy(() => import("../heptabase/HeptabasePanel"));
 
 export type RightPanelTerminalProps = Omit<
   PersistentThreadTerminalPanelProps,
@@ -62,6 +63,8 @@ export function RightPanelSurfaceContent(props: {
   readonly threadRef: ScopedThreadRef;
   readonly environmentId: EnvironmentId;
   readonly visible: boolean;
+  /** Default name for a new Heptabase whiteboard linked to this thread. */
+  readonly threadTitle: string;
   readonly composerDraftTarget: ScopedThreadRef | DraftId;
   readonly keybindings: ResolvedKeybindingsConfig;
   readonly configuredPreviewUrls: ReadonlyArray<string>;
@@ -79,6 +82,17 @@ export function RightPanelSurfaceContent(props: {
   const { surface, threadRef, visible } = props;
   if (surface === null) return null;
   switch (surface.kind) {
+    case "heptabase":
+      return (
+        <Suspense fallback={null}>
+          <HeptabasePanel
+            key={scopedThreadKey(threadRef)}
+            threadRef={threadRef}
+            title={props.threadTitle}
+            visible={visible}
+          />
+        </Suspense>
+      );
     case "preview":
       return (
         <Suspense fallback={null}>

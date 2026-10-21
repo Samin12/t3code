@@ -2,6 +2,7 @@ import type { ContextMenuItem } from "@t3tools/contracts";
 import type { SnoozePreset } from "@t3tools/client-runtime/state/thread-settled";
 
 export type ThreadActionMenuId =
+  | "handoff"
   | "new-thread-on-branch"
   | "filter-by-project"
   | "project-settings"
@@ -109,6 +110,7 @@ export function buildThreadActionMenuItems(
   state: ThreadActionMenuState,
 ): ReadonlyArray<ContextMenuItem<ThreadActionMenuId>> {
   const items: ReadonlyArray<ContextMenuItem<ThreadActionMenuId>> = [
+    { id: "handoff", label: "Hand off to another model…", icon: "arrow-right-left" },
     ...(state.branch
       ? [
           {

@@ -12,6 +12,7 @@ import { createScratchProjectActions } from "../hooks/useScratchProject";
 import { getClientSettings } from "../hooks/useSettings";
 import { startNewThreadFromContext } from "../lib/chatThreadActions";
 import { selectProjectGroupingSettings } from "../logicalProject";
+import { requestProviderHandoff } from "../providerHandoffBus";
 import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { buildSidebarProjectSnapshots } from "../sidebarProjectGrouping";
@@ -116,6 +117,12 @@ export function installChatRouteCommands(router: AnyRouter): () => void {
         if (environmentId === null) return;
         claim(event);
         void scratch.startScratchThread(environmentId);
+      },
+      "thread.handoff": (event) => {
+        const threadRef = readRouteThreadRef();
+        if (!threadRef) return;
+        claim(event);
+        requestProviderHandoff({ threadRef });
       },
       "chat.new": (event) => {
         // Pre-hydration settings are the defaults, where the legacy sidebar is off.

@@ -29,6 +29,8 @@ import {
   buildPlanImplementationThreadTitle,
 } from "../../proposedPlan";
 import type { LatestProposedPlanState } from "../../session-logic";
+import { appAtomRegistry } from "../../rpc/atomRegistry";
+import { primaryEnvironmentIdAtom } from "../../state/primaryEnvironment";
 import { readEnvironmentScope } from "../../state/session";
 import { threadEnvironment } from "../../state/threads";
 import { useOrchestrationCommand } from "../../state/use-orchestration-command";
@@ -40,6 +42,7 @@ import {
   waitForStartedServerThread,
 } from "../ChatView.logic";
 import { draftSendState } from "./chatViewSend";
+import { readHeptabasePromptContext } from "../heptabase/promptContext";
 import type { useLocalDispatchState } from "./useLocalDispatchState";
 import type { useTimelineFollow } from "./useTimelineFollow";
 
@@ -138,12 +141,30 @@ export function usePlanFollowUpSend(input: PlanFollowUpSendInput) {
     const threadIdForSend = activeThread.id;
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
+    let heptabaseContext = "";
+    const heptabaseBridge = window.desktopBridge?.heptabase;
+    if (
+      heptabaseBridge &&
+      activeThread.environmentId === appAtomRegistry.get(primaryEnvironmentIdAtom)
+    ) {
+      sendInFlightRef.current = true;
+      const heptabase = await readHeptabasePromptContext(heptabaseBridge, {
+        environmentId: activeThread.environmentId,
+        threadId: threadIdForSend,
+      });
+      sendInFlightRef.current = false;
+      if (!heptabase.ok) {
+        setThreadError(threadIdForSend, heptabase.error);
+        return false;
+      }
+      heptabaseContext = heptabase.context;
+    }
     const outgoingMessageText = formatOutgoingPrompt({
       provider: sendCtx.selectedProvider,
       model: sendCtx.selectedModel,
       models: sendCtx.selectedProviderModels,
       effort: sendCtx.selectedPromptEffort,
-      text: trimmed,
+      text: trimmed + heptabaseContext,
     });
 
     sendInFlightRef.current = true;

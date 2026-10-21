@@ -9,6 +9,8 @@ import { Kbd } from "../ui/kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 import { modelPickerModelKey } from "./modelPickerKeys";
+import { ModelPickerUsage } from "./ModelPickerUsage";
+import type { ModelPickerUsageState } from "./ModelPickerUsage.logic";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 
 export const ModelListRow = memo(function ModelListRow(props: {
@@ -27,6 +29,9 @@ export const ModelListRow = memo(function ModelListRow(props: {
   showProvider: boolean;
   showNewBadge?: boolean;
   unavailable?: boolean;
+  /** The row's account usage. A spent account fades but stays selectable. */
+  usage?: ModelPickerUsageState | undefined;
+  showUsage?: boolean;
   jumpLabel?: string | null;
   disabledReason?: string | null;
   onToggleFavorite: (instanceId: ProviderInstanceId, slug: string) => void;
@@ -51,39 +56,42 @@ export const ModelListRow = memo(function ModelListRow(props: {
       )}
     >
       <div className="min-w-0 flex-1 text-left">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="min-w-0 truncate text-sm font-normal leading-snug">
-            {getDisplayModelName(model)}
+        <div className={cn(props.usage?.exhausted && "opacity-50")}>
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="min-w-0 truncate text-sm font-normal leading-snug">
+              {getDisplayModelName(model)}
+            </div>
+            {props.showNewBadge ? (
+              <span
+                className="shrink-0 rounded border border-update/35 bg-update/15 px-0.5 py-px text-3xs font-bold uppercase leading-none tracking-wide text-update-foreground"
+                aria-label="New model"
+              >
+                New
+              </span>
+            ) : null}
+            {props.unavailable ? (
+              <Badge variant="outline" size="sm">
+                Unavailable
+              </Badge>
+            ) : null}
           </div>
-          {props.showNewBadge ? (
-            <span
-              className="shrink-0 rounded border border-update/35 bg-update/15 px-0.5 py-px text-3xs font-bold uppercase leading-none tracking-wide text-update-foreground"
-              aria-label="New model"
-            >
-              New
-            </span>
-          ) : null}
-          {props.unavailable ? (
-            <Badge variant="outline" size="sm">
-              Unavailable
-            </Badge>
-          ) : null}
+          {props.showProvider && (
+            <div className="mt-1 flex items-center gap-1.5">
+              <ProviderInstanceIcon
+                driverKind={props.driverKind}
+                displayName={props.providerDisplayName}
+                acpRegistryAgentId={props.acpRegistryAgentId}
+                acpRegistryIconUrl={props.acpRegistryIconUrl}
+                className="size-3"
+                iconClassName="size-3"
+              />
+              <span className="truncate text-xs font-normal leading-snug text-muted-foreground/70">
+                {providerLabel}
+              </span>
+            </div>
+          )}
         </div>
-        {props.showProvider && (
-          <div className="mt-1 flex items-center gap-1.5">
-            <ProviderInstanceIcon
-              driverKind={props.driverKind}
-              displayName={props.providerDisplayName}
-              acpRegistryAgentId={props.acpRegistryAgentId}
-              acpRegistryIconUrl={props.acpRegistryIconUrl}
-              className="size-3"
-              iconClassName="size-3"
-            />
-            <span className="truncate text-xs font-normal leading-snug text-muted-foreground/70">
-              {providerLabel}
-            </span>
-          </div>
-        )}
+        {props.showUsage && props.usage ? <ModelPickerUsage usage={props.usage} /> : null}
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">

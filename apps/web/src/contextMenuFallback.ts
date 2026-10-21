@@ -65,6 +65,12 @@ const ICON_PATHS: Record<string, ReadonlyArray<{ tag: string; attrs: Record<stri
     },
     { tag: "path", attrs: { d: "m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10" } },
   ],
+  "arrow-right-left": [
+    { tag: "path", attrs: { d: "M8 3 4 7l4 4" } },
+    { tag: "path", attrs: { d: "M4 7h16" } },
+    { tag: "path", attrs: { d: "m16 21 4-4-4-4" } },
+    { tag: "path", attrs: { d: "M20 17H4" } },
+  ],
   "message-square-plus": [
     {
       tag: "path",

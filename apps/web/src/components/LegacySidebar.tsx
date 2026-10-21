@@ -1,3 +1,5 @@
+import { requestProviderHandoff } from "../providerHandoffBus";
+import { useThreadTraversalKeypressGuard } from "../hooks/useThreadTraversalKeypressGuard";
 import { useSupportsMultiplePullRequests } from "~/hooks/useSupportsMultiplePullRequests";
 import { resolveThreadCurrentPullRequestLink } from "@t3tools/client-runtime/thread-pull-requests";
 import { Spinner } from "~/components/ui/spinner";
@@ -2171,6 +2173,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       );
       const clicked = await api.contextMenu.show(
         [
+          { id: "handoff", label: "Hand off to another model…" },
           ...(thread.branch
             ? [{ id: "new-thread-on-branch", label: `New thread on ${thread.branch}` }]
             : []),
@@ -2199,6 +2202,11 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
           to: "/projects/$projectKey",
           params: { projectKey: project.projectKey },
         });
+        return;
+      }
+
+      if (clicked === "handoff") {
+        requestProviderHandoff({ threadRef });
         return;
       }
 
@@ -3273,6 +3281,7 @@ function clearThreadSelectionOnOutsideMouseDown(event: globalThis.MouseEvent) {
 }
 
 export default function LegacySidebar({ routeReveal }: { routeReveal: SidebarRouteReveal }) {
+  const acceptThreadTraversalKeypress = useThreadTraversalKeypressGuard();
   const reorderProjects = useUiStateStore((store) => store.reorderProjects);
   const navigate = useNavigate();
   const sidebarThreadSortOrder = useClientSettings((s) => s.sidebarThreadSortOrder);
@@ -3455,6 +3464,11 @@ export default function LegacySidebar({ routeReveal }: { routeReveal: SidebarRou
     });
     const traversalDirection = threadTraversalDirectionFromCommand(command);
     if (traversalDirection !== null) {
+      if (!acceptThreadTraversalKeypress(event)) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       const targetThreadKey = resolveAdjacentThreadId({
         threadIds: orderedSidebarThreadKeys,
         currentThreadId: routeThreadKey,

@@ -38,6 +38,7 @@ describe("buildThreadActionMenuItems", () => {
       });
       const expected = reversed
         ? [
+            "handoff",
             "unpin",
             "unsettle",
             "unsnooze",
@@ -48,6 +49,7 @@ describe("buildThreadActionMenuItems", () => {
             "delete",
           ]
         : [
+            "handoff",
             "pin",
             "settle",
             "snooze",
@@ -64,6 +66,13 @@ describe("buildThreadActionMenuItems", () => {
       ).toBe(true);
     },
   );
+
+  it("offers hand off before the other thread actions", () => {
+    expect(buildThreadActionMenuItems(baseState)[0]).toMatchObject({
+      id: "handoff",
+      label: "Hand off to another model…",
+    });
+  });
 
   it("disables archive while the thread is running", () => {
     const archiveItem = buildThreadActionMenuItems({ ...baseState, isRunning: true }).find(

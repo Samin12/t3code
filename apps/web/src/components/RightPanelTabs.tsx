@@ -26,6 +26,7 @@ import { restrictToFirstScrollableAncestor, restrictToHorizontalAxis } from "@dn
 import { horizontalListSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  PanelsTopLeft,
   Smartphone,
   ChevronDown,
   ChevronLeft,
@@ -129,6 +130,8 @@ export interface RightPanelTabsProps {
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
   onAddDevice: () => void;
+  onAddHeptabase?: (() => void) | undefined;
+  heptabaseAvailable?: boolean | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -303,6 +306,8 @@ function RightPanelEmptyState(props: {
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
   onAddDevice: () => void;
+  onAddHeptabase?: (() => void) | undefined;
+  heptabaseAvailable?: boolean | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -361,6 +366,14 @@ function RightPanelEmptyState(props: {
       available: props.pullRequestsAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.pullRequests,
       onClick: props.onAddPullRequests,
+    },
+    {
+      label: "Heptabase",
+      icon: PanelsTopLeft,
+      shortcut: "H",
+      available: props.heptabaseAvailable ?? false,
+      disabledReason: "Available in the desktop app with a local thread.",
+      onClick: () => props.onAddHeptabase?.(),
     },
     {
       label: "Device",
@@ -553,6 +566,8 @@ function surfaceTitle(
       return `#${surface.number}`;
     case "pull-requests":
       return "Pull requests";
+    case "heptabase":
+      return "Heptabase";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
     case "preview": {
@@ -643,6 +658,8 @@ function SurfaceIcon({
       );
     case "pull-requests":
       return <PullRequestGlyph.link className="size-3 shrink-0" />;
+    case "heptabase":
+      return <PanelsTopLeft className="size-3 shrink-0" />;
     case "device":
       return surface.target?.platform === "ios" ? (
         <AppleIcon className="size-3 shrink-0" />
@@ -1059,6 +1076,14 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       onClick: props.onAddPullRequests,
     },
     {
+      label: "Heptabase",
+      icon: PanelsTopLeft,
+      shortcut: "H",
+      available: props.heptabaseAvailable ?? false,
+      disabledReason: "Available in the desktop app with a local thread.",
+      onClick: () => props.onAddHeptabase?.(),
+    },
+    {
       label: "Device",
       icon: Smartphone,
       shortcut: "M",
@@ -1439,6 +1464,8 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             pullRequestAvailable={props.pullRequestAvailable}
             pullRequestsAvailable={props.pullRequestsAvailable}
             deviceAvailable={props.deviceAvailable}
+            onAddHeptabase={props.onAddHeptabase}
+            heptabaseAvailable={props.heptabaseAvailable}
           />
         ) : (
           props.children

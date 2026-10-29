@@ -1,5 +1,6 @@
 import {
   OrchestratorMcpFailure,
+  OrchestrationV2LibrarianFiling,
   OrchestratorMcpThreadListResult,
   OrchestratorMcpThreadReadResult,
   OrchestratorMcpThreadSendResult,
@@ -172,6 +173,7 @@ const ProjectListResult = Schema.Struct({
 });
 
 const ThreadLaunchResult = Schema.Struct({
+  librarian: Schema.optional(OrchestrationV2LibrarianFiling),
   threadId: ThreadId,
   projectId: ProjectId,
   runId: Schema.NullOr(RunId),
@@ -684,6 +686,7 @@ const finishRun = Effect.fn("cli.thread.finishRun")(function* (
     readonly runId: RunId;
     readonly json: boolean;
     readonly followWakes: boolean;
+    readonly librarian?: OrchestrationV2LibrarianFiling;
   },
 ) {
   const outcome = yield* waitForRun(tools, input.threadId, input.runId, input.followWakes);
@@ -706,6 +709,9 @@ const finishRun = Effect.fn("cli.thread.finishRun")(function* (
       reply,
       error,
       ...(output === undefined ? {} : { output }),
+      ...(input.librarian
+        ? { projectId: input.librarian.projectId, librarian: input.librarian }
+        : {}),
     });
   } else if (reply !== null) {
     yield* Console.log(reply);
@@ -870,9 +876,11 @@ const threadListCommand = Command.make("list", {
 const threadStartCommand = Command.make("start", {
   ...projectLocationFlags,
   project: Argument.String("project").pipe(
-    Argument.withDescription("Project id or a path inside the project, such as ."),
+    Argument.withDescription("Project id or path; optional with --librarian."),
+    Argument.optional,
   ),
-  message: messageArgument,
+  librarian: Flag.Boolean("librarian").pipe(Flag.withDefault(false)),
+  message: messageArgument.pipe(Argument.optional),
   title: Flag.String("title").pipe(
     Flag.withDescription("Thread title. Defaults to the message's first line."),
     Flag.optional,
@@ -914,7 +922,17 @@ const threadStartCommand = Command.make("start", {
   Command.withDescription("Start a thread in a project and print its id."),
   Command.withHandler((flags) =>
     Effect.gen(function* () {
-      const message = yield* readMessageArgument(flags.message);
+      const projectArgument = Option.isSome(flags.message)
+        ? Option.getOrUndefined(flags.project)
+        : undefined;
+      if (!flags.librarian && projectArgument === undefined) {
+        return yield* new ThreadUsageError({ detail: "Pass a project or --librarian." });
+      }
+      const messageInput = Option.getOrElse(flags.message, () =>
+        Option.getOrElse(flags.project, () => ""),
+      );
+      if (!messageInput) return yield* new ThreadUsageError({ detail: "Pass a message." });
+      const message = yield* readMessageArgument(messageInput);
       const output = yield* readOutputSchema(flags.outputSchema);
       const workspaceStrategy = yield* launchWorkspaceStrategy(flags);
       const modelSelection = yield* launchModelSelection(flags);
@@ -924,11 +942,15 @@ const threadStartCommand = Command.make("start", {
       yield* withThreadTools(
         flags,
         Effect.fn("cli.thread.start")(function* (tools) {
-          const project = yield* resolveProject(tools, flags.project);
+          const project =
+            projectArgument === undefined
+              ? undefined
+              : yield* resolveProject(tools, projectArgument);
           const launched = yield* tools.call(
             "t3_thread_launch",
             {
-              projectId: project.id,
+              ...(project ? { projectId: project.id } : {}),
+              ...(flags.librarian ? { librarian: true } : {}),
               title,
               ...(flags.generateTitle ? { generateTitle: true } : {}),
               message,
@@ -945,6 +967,7 @@ const threadStartCommand = Command.make("start", {
               runId: launched.runId,
               json: flags.json,
               followWakes: true,
+              ...(launched.librarian ? { librarian: launched.librarian } : {}),
             });
           }
           yield* flags.json ? printJson(launched) : Console.log(launched.threadId);

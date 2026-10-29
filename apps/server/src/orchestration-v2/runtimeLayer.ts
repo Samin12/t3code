@@ -1,3 +1,4 @@
+import * as ProjectLibrarian from "../librarian/ProjectLibrarian.ts";
 import * as WorktreeBranchSync from "./WorktreeBranchSync.ts";
 import * as GuestShareService from "../guest/GuestShareService.ts";
 import * as UsageLimitRecoveryWorker from "./UsageLimitRecoveryWorker.ts";
@@ -299,6 +300,7 @@ const layerManagedProjectFoldersProvided = ManagedProjectFolders.layer.pipe(
   Layer.provide(layerProjectService),
 );
 const layerThreadLaunchProvided = ThreadLaunchService.layer.pipe(
+  Layer.provide(ProjectLibrarian.layer.pipe(Layer.provide(layerProjectService))),
   Layer.provide(
     Layer.mergeAll(
       layerProjectSetupScriptRunner,

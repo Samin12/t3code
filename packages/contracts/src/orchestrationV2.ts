@@ -473,6 +473,7 @@ const OrchestrationV2LastTitleRegeneration = Schema.Struct({
 });
 
 export const OrchestrationV2AppThread = Schema.Struct({
+  callName: Schema.optional(Schema.String),
   ...OrchestrationV2CreationFields,
   id: ThreadId,
   projectId: ProjectId,
@@ -978,6 +979,7 @@ const DedupedBodyMarker = Schema.optionalKey(Schema.Literal(true));
  * as there. Such a task has no `childThreadId`.
  */
 export const OrchestrationV2RemoteTaskChild = Schema.Struct({
+  callName: Schema.optional(Schema.String),
   environmentId: EnvironmentId,
   threadId: ThreadId,
   label: Schema.String,
@@ -2344,6 +2346,7 @@ export type OrchestrationV2LatestVisibleMessageSummary =
   typeof OrchestrationV2LatestVisibleMessageSummary.Type;
 
 export const OrchestrationV2ThreadShell = Schema.Struct({
+  callName: Schema.optional(Schema.String),
   ...OrchestrationV2CreationFields,
   id: ThreadId,
   projectId: ProjectId,
@@ -4082,7 +4085,16 @@ export const OrchestrationV2ArchivedShellSnapshot = Schema.Struct({
 });
 export type OrchestrationV2ArchivedShellSnapshot = typeof OrchestrationV2ArchivedShellSnapshot.Type;
 
+export const OrchestrationV2LibrarianFiling = Schema.Struct({
+  projectId: ProjectId,
+  projectTitle: Schema.String,
+  reason: Schema.String,
+  createdProject: Schema.Boolean,
+});
+export type OrchestrationV2LibrarianFiling = typeof OrchestrationV2LibrarianFiling.Type;
+
 export const OrchestrationV2ThreadLaunchInput = Schema.Struct({
+  librarian: Schema.optional(Schema.Boolean),
   commandId: CommandId,
   creationSource: Schema.optional(OrchestrationV2CreationSource),
   threadId: Schema.optional(ThreadId),
@@ -4106,6 +4118,7 @@ export const OrchestrationV2ThreadLaunchInput = Schema.Struct({
 export type OrchestrationV2ThreadLaunchInput = typeof OrchestrationV2ThreadLaunchInput.Type;
 
 export const OrchestrationV2ThreadLaunchResult = Schema.Struct({
+  librarian: Schema.optional(OrchestrationV2LibrarianFiling),
   threadId: ThreadId,
   projection: OrchestrationV2ThreadProjection,
   resumed: Schema.Boolean,

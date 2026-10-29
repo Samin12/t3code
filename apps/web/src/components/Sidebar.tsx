@@ -10,6 +10,7 @@ import {
   moveThreadContextDrag as moveThreadContextDragGhost,
 } from "./chat/threadContextDrag";
 import { discardComposerDraft } from "../lib/discardComposerDraft";
+import { useThreadTraversalKeypressGuard } from "../hooks/useThreadTraversalKeypressGuard";
 import { requestCustomSnooze } from "./CustomSnoozeDialog";
 import { useAtomValue } from "@effect/atom-react";
 import * as Option from "effect/Option";
@@ -136,7 +137,7 @@ import { useSidebarProjectGroups } from "../hooks/useSidebarProjectGroups";
 import { isCommandPaletteOpen, openCommandPalette } from "../commandPaletteBus";
 import { registerSettleAndAdvance } from "../settleAndAdvance";
 import { startNewThreadFromContext } from "../lib/chatThreadActions";
-import { useClientSettings } from "../hooks/useSettings";
+import { getClientSettings, useClientSettings } from "../hooks/useSettings";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useNowMinute } from "../hooks/useNowMinute";
@@ -180,6 +181,7 @@ import {
   buildThreadActionMenuItems,
   threadActionRequiresOperate,
 } from "./threadActionMenu.logic";
+import { requestProviderHandoff } from "../providerHandoffBus";
 import {
   applySidebarThreadDrop,
   filterSidebarV2VisibleThreads,
@@ -1260,7 +1262,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   );
   const startThreadInProjectFolder = useStableCallback((group: SidebarProjectSnapshot) => {
     if (isMobile) setOpenMobile(false);
-    void handleNewThread(scopeProjectRef(group.environmentId, group.id));
+    void handleNewThread(scopeProjectRef(group.environmentId, group.id), { librarian: false });
   });
   const handleProjectFolderContextMenu = useStableCallback(
     (
@@ -1627,7 +1629,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     return nextThread
       ? () => navigateToThread(scopeThreadRef(nextThread.environmentId, nextThread.id))
       : shell
-        ? () => void handleNewThread(scopeProjectRef(shell.environmentId, shell.projectId))
+        ? () =>
+            void handleNewThread(scopeProjectRef(shell.environmentId, shell.projectId), {
+              librarian: false,
+            })
         : () => void router.navigate({ to: "/" });
   };
 
@@ -2741,6 +2746,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                 projectId: thread.projectId,
               });
             return;
+          case "handoff":
+            requestProviderHandoff({ threadRef });
+            return;
           case "new-thread-on-branch": {
             const result = await settlePromise(() =>
               handleNewThread(scopeProjectRef(thread.environmentId, thread.projectId), {
@@ -2927,6 +2935,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       handleThreadContextMenu(threadRef, position, source, true),
   );
 
+  const acceptThreadTraversalKeypress = useThreadTraversalKeypressGuard();
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes to window keydown for thread navigation shortcuts using the current thread list
   useEffect(() => {
     const onWindowKeyDown = (event: KeyboardEvent) => {
@@ -2951,6 +2960,11 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       };
       const traversalDirection = threadTraversalDirectionFromCommand(command);
       if (traversalDirection !== null) {
+        if (!acceptThreadTraversalKeypress(event)) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         navigateToRowKey(
           resolveAdjacentThreadId({
             threadIds: orderedRowKeys,
@@ -2967,6 +2981,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     window.addEventListener("keydown", onWindowKeyDown);
     return () => window.removeEventListener("keydown", onWindowKeyDown);
   }, [
+    acceptThreadTraversalKeypress,
     draftIdByRowKey,
     keybindings,
     navigateToDraft,
@@ -3000,6 +3015,8 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       return;
     }
     if (
+      // The librarian picks the project on send, so there's no "new thread in…" picker.
+      getClientSettings().newThreadsUseLibrarian ||
       shouldCreateNewThreadInCurrentProject(
         event?.shiftKey ?? false,
         scopeGroups.length,

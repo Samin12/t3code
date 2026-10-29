@@ -24,6 +24,7 @@ import type { HtmlRenderReference } from "@t3tools/shared/htmlRender";
 import { turnItemDetailRevision } from "@t3tools/client-runtime/work-log/item-detail";
 import type { McpAppReference } from "@t3tools/shared/mcpApp";
 import {
+  decisionsFromToolItem,
   htmlRenderFromToolItem,
   mcpAppFromToolItem,
   sentMessageFromToolItem,
@@ -690,6 +691,9 @@ export function deriveTimelineEntriesFromVisibleTurnItems(
       });
       continue;
     }
+
+    if (item.type === "dynamic_tool" && item.status === "completed" && decisionsFromToolItem(item))
+      continue;
 
     const htmlRender =
       item.type === "dynamic_tool" && item.status === "completed"

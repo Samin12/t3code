@@ -209,7 +209,7 @@ function AddProjectToMachineDialog({ request }: { request: AddProjectToMachineRe
       seedDraftModelSelection(draftId, targetRef);
       return;
     }
-    void handleNewThread(targetRef);
+    void handleNewThread(targetRef, { librarian: false });
   };
 
   const submit = async () => {

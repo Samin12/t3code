@@ -33,6 +33,7 @@ import {
   type OrchestrationV2ThreadShell,
   type OrchestrationV2ThreadStreamItem,
   type OrchestrationV2TurnItem,
+  type ServerConfigStreamEvent,
   type TerminalMetadataStreamEvent,
   type ResolvedKeybindingsConfig,
 } from "@t3tools/contracts";
@@ -431,6 +432,8 @@ let pendingDispatches: Array<{
 let pendingAssetUrls: Array<Deferred.Deferred<AssetCreateUrlResult>> = [];
 let sequence = 1;
 let vcsStatusSubscriber: Queue.Queue<VcsStatusStreamEvent> | null = null;
+// The connection outlives each test, so a test's keybindings reach it as a live server's edit would.
+const serverConfigSubscribers = new Set<Queue.Queue<ServerConfigStreamEvent>>();
 
 const subscribe = <A>(first: ReadonlyArray<A>, register?: (queue: Queue.Queue<A>) => () => void) =>
   Stream.unwrap(
@@ -444,6 +447,27 @@ const subscribe = <A>(first: ReadonlyArray<A>, register?: (queue: Queue.Queue<A>
       return Stream.fromQueue(queue);
     }),
   );
+
+const subscribeServerConfig = () =>
+  subscribe<ServerConfigStreamEvent>(
+    [{ version: 1, type: "snapshot", config: serverConfig() }],
+    (queue) => {
+      serverConfigSubscribers.add(queue);
+      return () => serverConfigSubscribers.delete(queue);
+    },
+  );
+
+function setServerConfig(next: ServerConfig): void {
+  const keybindingsChanged = next.keybindings !== baseServerConfig.keybindings;
+  baseServerConfig = next;
+  if (!keybindingsChanged) return;
+  const event: ServerConfigStreamEvent = {
+    version: 1,
+    type: "keybindingsUpdated",
+    payload: { keybindings: next.keybindings, issues: next.issues },
+  };
+  for (const queue of serverConfigSubscribers) Effect.runSync(Queue.offer(queue, event));
+}
 
 const handlers: Record<string, (input: never) => unknown> = {
   // Recorded, and accepted only when the scenario asks, since a pending command holds every
@@ -545,8 +569,7 @@ const handlers: Record<string, (input: never) => unknown> = {
         if (vcsStatusSubscriber === queue) vcsStatusSubscriber = null;
       };
     }),
-  [WS_METHODS.subscribeServerConfig]: () =>
-    subscribe([{ version: 1 as const, type: "snapshot" as const, config: serverConfig() }]),
+  [WS_METHODS.subscribeServerConfig]: subscribeServerConfig,
 };
 
 // Unanswered calls stay pending, like a server that has not replied yet.
@@ -562,8 +585,7 @@ const client = new Proxy(handlers, {
 const session: EnvironmentConnectionLease["session"] = {
   client: client as unknown as WsRpcProtocolClient,
   initialConfig: Effect.sync(serverConfig),
-  subscribeServerConfig: () =>
-    subscribe([{ version: 1 as const, type: "snapshot" as const, config: serverConfig() }]),
+  subscribeServerConfig,
   ready: Effect.void,
   probe: Effect.void,
   inboundFrames: Effect.succeed(0),
@@ -610,13 +632,13 @@ export function installFakeEnvironment(
   },
 ): Disposable {
   threads = fixtures;
-  baseServerConfig = {
+  setServerConfig({
     ...makeServerConfig(
       options?.providers ?? [CODEX_PROVIDER],
       fixtures.some((thread) => (thread.issues?.length ?? 0) > 0),
     ),
     keybindings: options?.keybindings ?? DEFAULT_RESOLVED_KEYBINDINGS,
-  };
+  });
   dispatched = [];
   acceptCommands = options?.acceptCommands === true;
   projects = [
@@ -649,7 +671,7 @@ export function installFakeEnvironment(
     [Symbol.dispose]: () => {
       globalThis.fetch = realFetch;
       threads = [];
-      baseServerConfig = makeServerConfig([CODEX_PROVIDER]);
+      setServerConfig(makeServerConfig([CODEX_PROVIDER]));
       dispatched = [];
       acceptCommands = false;
       projects = [project];

@@ -2223,6 +2223,7 @@ export const layerWsRpc = (
                             ? {}
                             : { reuseExistingThread: input.reuseExistingThread }),
                           projectId: input.projectId,
+                          ...(input.librarian === undefined ? {} : { librarian: input.librarian }),
                           title: input.title,
                           ...(input.generateTitle === undefined
                             ? {}

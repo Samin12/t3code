@@ -248,6 +248,8 @@
   "c712fec8d9dc6dd6": "{count, plural, other {リンクされた Issue を {count} 回確認しようとしました}}",
   "537feee59d775e17": "{count, plural, other {{count} 件の HTML ページをプレビューしました}}",
   "4b45ac8cb8df04a4": "{count, plural, other {{count} 件の HTML ページをプレビューしようとしました}}",
+  "654e1b7a4028ceaa": "{count, plural, one {Prepared {count} decision card} other {Prepared {count} decision cards}}",
+  "496cf81f22e78779": "{count, plural, one {Tried to prepare {count} decision card} other {Tried to prepare {count} decision cards}}",
   "a6f62fca5dd25455": "{count, plural, other {{count} 件の HTML ページをレンダリングしました}}",
   "3280d45703154eb4": "{count, plural, other {{count} 件の HTML ページをレンダリングしようとしました}}",
   "898770cae17df8d2": "{count, plural, other {{count} 件のメッセージを送信しました}}",

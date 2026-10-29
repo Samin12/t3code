@@ -1,3 +1,4 @@
+import { makeThreadCallNames } from "./ThreadCallNames.ts";
 import type { ProjectThreadAwarenessV2Input } from "@t3tools/shared/agentAwareness";
 import { applyOrchestrationV2ThreadVisit, pendingGuestMessageCount } from "@t3tools/contracts";
 import { applyThreadPullRequestLinkUpdate } from "../sourceControl/threadPullRequests.ts";
@@ -2243,6 +2244,7 @@ function shellFromState(input: {
     id: input.state.thread.id,
     projectId: input.state.thread.projectId,
     title: input.state.thread.title,
+    ...(input.state.thread.callName === undefined ? {} : { callName: input.state.thread.callName }),
     providerInstanceId: input.state.thread.providerInstanceId,
     modelSelection: input.state.thread.modelSelection,
     runtimeMode: input.state.thread.runtimeMode,
@@ -2325,7 +2327,7 @@ function shellFromState(input: {
 // in migration 095, where a tool name counts anywhere after the first toolName. Searching from
 // that first one once avoids rescanning the payload for every nested toolName.
 const INLINE_WORK_OUTPUT = new RegExp(
-  `htmlRender|${MCP_APP_OUTPUT_KEY}|"viewedImagePath"|sentMessage`,
+  `htmlRender|end.turn|${MCP_APP_OUTPUT_KEY}|"viewedImagePath"|sentMessage`,
   "i",
 );
 const TOOL_NAME_PREFIX = /"toolName":"/i;
@@ -2344,6 +2346,16 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
   ProjectionStoreV2,
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
+    const callNames = makeThreadCallNames(sql);
+    const ensureCallNames = yield* Effect.cached(
+      callNames
+        .backfill()
+        .pipe(
+          Effect.catch((cause) =>
+            Effect.logWarning("Unable to backfill thread call names", { cause }),
+          ),
+        ),
+    );
 
     // SQLite uses the partial conversation index of migration 082 only for this exact predicate.
     const CONVERSATION_INDEX_EXCLUDED_TYPES = sql.literal(
@@ -2524,7 +2536,8 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
             case "thread.model-selection-updated":
             case "thread.provider-switched":
             case "thread.guest-share-updated": {
-              const payloadJson = yield* encodeThreadPayload(event.payload);
+              const callName = yield* callNames.assign(event.payload.id);
+              const payloadJson = yield* encodeThreadPayload({ ...event.payload, callName });
               const payload = parseEncodedPayload(payloadJson);
               yield* sql`
               INSERT INTO orchestration_v2_projection_threads (
@@ -6865,6 +6878,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
       WHERE item.thread_id = ${threadId}
         AND item.type = 'dynamic_tool'
         AND (item.payload_json LIKE '%htmlRender%'
+          OR item.payload_json LIKE '%end_turn%'
           OR item.payload_json LIKE ${`%${MCP_APP_OUTPUT_KEY}%`}
           OR item.payload_json LIKE '%preview_recording_stop%')
         AND ${runOrdinalBetween("item.run_id", from, through)}
@@ -9820,7 +9834,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
         method: (...args: Args) => Effect.Effect<A, E, R>,
       ) =>
       (...args: Args): Effect.Effect<A, E, R> =>
-        method(...args).pipe(NodeSqliteClient.readOnly);
+        ensureCallNames.pipe(Effect.andThen(method(...args).pipe(NodeSqliteClient.readOnly)));
 
     return {
       apply,
@@ -9874,7 +9888,11 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
       getTurnItem: readOnReader(getTurnItem),
       getMessagesById: readOnReader(getMessagesById),
       getThreadRecords: (threadId, fields, filter) =>
-        getThreadRecords(threadId, fields, filter).pipe(NodeSqliteClient.readOnly),
+        ensureCallNames.pipe(
+          Effect.andThen(
+            getThreadRecords(threadId, fields, filter).pipe(NodeSqliteClient.readOnly),
+          ),
+        ),
       getRuntimeRequest: readOnReader(getRuntimeRequest),
       getPlan: readOnReader(getPlan),
       getProviderControlContext: readOnReader(getProviderControlContext),

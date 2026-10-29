@@ -163,6 +163,15 @@ describe("orchestration V2 wire projection", () => {
     const item = { ...base, output: { ok: true } } satisfies OrchestrationV2TurnItem;
     expect(projectTurnItemForWire(item)).toEqual({ ...base, outputOmitted: true });
     expect(item.output).toEqual({ ok: true });
+    const decisions = {
+      needs: "you",
+      asks: [{ question: "Deploy?", options: [{ label: "Yes" }] }],
+    };
+    const decisionItem = { ...base, toolName: "t3-code.end_turn", output: { decisions } };
+    const projected = projectTurnItemForWire(decisionItem);
+    expect(projected).toMatchObject({ output: { decisions }, outputOmitted: true });
+    expect(decodeTurnItem(projected)).toMatchObject({ output: { decisions } });
+    expect(projectTurnItemForWire(projected)).toEqual(projected);
   });
 
   it("uses encoded JSON bytes for strings near the dynamic-value limit", () => {

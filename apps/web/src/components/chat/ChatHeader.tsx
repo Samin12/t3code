@@ -47,6 +47,7 @@ interface ChatHeaderProps {
   activeThreadEnvironmentId: EnvironmentId;
   activeThreadId: ThreadId;
   activeThreadTitle: string;
+  activeThreadCallName?: string | undefined;
   activeThreadLinkOrigin?: string | null | undefined;
   isServerThread: boolean;
   activeProject: EnvironmentProject | null;
@@ -74,6 +75,7 @@ export const ChatHeader = memo(function ChatHeader({
   activeThreadEnvironmentId,
   activeThreadId,
   activeThreadTitle,
+  activeThreadCallName,
   activeThreadLinkOrigin,
   isServerThread,
   activeProject,
@@ -314,6 +316,13 @@ export const ChatHeader = memo(function ChatHeader({
                 <TooltipPopup side="top">New thread in {activeProjectName}</TooltipPopup>
               </Tooltip>
             </WorkspaceBreadcrumbItem>
+            {activeThreadCallName ? (
+              <WorkspaceBreadcrumbItem>
+                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                  {activeThreadCallName}
+                </span>
+              </WorkspaceBreadcrumbItem>
+            ) : null}
             <WorkspaceBreadcrumbSeparator>
               <WorkspaceBreadcrumbText>/</WorkspaceBreadcrumbText>
             </WorkspaceBreadcrumbSeparator>

@@ -8,6 +8,7 @@ import {
   moveThreadContextDrag as moveThreadContextDragGhost,
 } from "./chat/threadContextDrag";
 import { discardComposerDraft } from "../lib/discardComposerDraft";
+import { useThreadTraversalKeypressGuard } from "../hooks/useThreadTraversalKeypressGuard";
 import { requestCustomSnooze } from "./CustomSnoozeDialog";
 import { useAtomValue } from "@effect/atom-react";
 import * as Option from "effect/Option";
@@ -177,6 +178,7 @@ import {
   buildThreadActionMenuItems,
   threadActionRequiresOperate,
 } from "./threadActionMenu.logic";
+import { requestProviderHandoff } from "../providerHandoffBus";
 import {
   applySidebarThreadDrop,
   filterSidebarV2VisibleThreads,
@@ -2684,6 +2686,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                 projectId: thread.projectId,
               });
             return;
+          case "handoff":
+            requestProviderHandoff({ threadRef });
+            return;
           case "new-thread-on-branch": {
             const result = await settlePromise(() =>
               handleNewThread(scopeProjectRef(thread.environmentId, thread.projectId), {
@@ -2873,6 +2878,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     },
   );
 
+  const acceptThreadTraversalKeypress = useThreadTraversalKeypressGuard();
   const routeTerminalOpen = useTerminalUiStateStore((state) =>
     routeThreadRef
       ? selectThreadTerminalUiState(state.terminalUiStateByThreadKey, routeThreadRef).terminalOpen
@@ -2905,6 +2911,11 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       };
       const traversalDirection = threadTraversalDirectionFromCommand(command);
       if (traversalDirection !== null) {
+        if (!acceptThreadTraversalKeypress(event)) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         navigateToThreadKey(
           resolveAdjacentThreadId({
             threadIds: orderedThreadKeys,
@@ -2921,6 +2932,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     window.addEventListener("keydown", onWindowKeyDown);
     return () => window.removeEventListener("keydown", onWindowKeyDown);
   }, [
+    acceptThreadTraversalKeypress,
     keybindings,
     navigateToThread,
     orderedThreadKeys,

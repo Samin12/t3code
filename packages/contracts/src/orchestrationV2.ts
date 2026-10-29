@@ -442,6 +442,7 @@ const LenientThreadOpens = Schema.NullOr(OrchestrationV2ThreadOpens).pipe(
 );
 
 export const OrchestrationV2AppThread = Schema.Struct({
+  callName: Schema.optional(Schema.String),
   ...OrchestrationV2CreationFields,
   id: ThreadId,
   projectId: ProjectId,
@@ -864,6 +865,7 @@ const DedupedBodyMarker = Schema.optionalKey(Schema.Literal(true));
  * as there. Such a task has no `childThreadId`.
  */
 export const OrchestrationV2RemoteTaskChild = Schema.Struct({
+  callName: Schema.optional(Schema.String),
   environmentId: EnvironmentId,
   threadId: ThreadId,
   label: Schema.String,
@@ -2082,6 +2084,7 @@ export type OrchestrationV2LatestVisibleMessageSummary =
   typeof OrchestrationV2LatestVisibleMessageSummary.Type;
 
 export const OrchestrationV2ThreadShell = Schema.Struct({
+  callName: Schema.optional(Schema.String),
   ...OrchestrationV2CreationFields,
   id: ThreadId,
   projectId: ProjectId,

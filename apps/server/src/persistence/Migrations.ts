@@ -1,6 +1,7 @@
 import * as Migrator from "effect/sql/Migrator";
 import * as Effect from "effect/Effect";
 import * as SqlClient from "effect/sql/SqlClient";
+import { reconcileThreadCallNamesMigration } from "./reconcileThreadCallNamesMigration.ts";
 import { reconcileV2PreviewMigration } from "./reconcileV2PreviewMigration.ts";
 
 import Migration0001 from "./Migrations/001_OrchestrationEvents.ts";
@@ -83,6 +84,9 @@ import Migration0077 from "./Migrations/077_RepairBooleanSettledOverride.ts";
 import Migration0078 from "./Migrations/078_DropOrchestrationEventCorrelationIndex.ts";
 import Migration0079 from "./Migrations/079_DelegatedRecoveryIndexes.ts";
 import Migration0080 from "./Migrations/080_ScheduledTaskThreadMode.ts";
+import Migration0081 from "./Migrations/081_ThreadCallNames.ts";
+
+const THREAD_CALL_NAMES_MIGRATION_ID = 81;
 
 const migrationEntries = [
   [1, "OrchestrationEvents", Migration0001],
@@ -166,6 +170,7 @@ const migrationEntries = [
   [78, "DropOrchestrationEventCorrelationIndex", Migration0078],
   [79, "DelegatedRecoveryIndexes", Migration0079],
   [80, "ScheduledTaskThreadMode", Migration0080],
+  [THREAD_CALL_NAMES_MIGRATION_ID, "ThreadCallNames", Migration0081],
 ] as const;
 
 export const migrationManifest = migrationEntries.map(([id, name]) => [id, name] as const);
@@ -227,6 +232,7 @@ export const runMigrations = Effect.fn("runMigrations")(function* ({
     toMigrationInclusive === undefined || toMigrationInclusive >= FIRST_V2_MIGRATION_ID;
   const previewMigrations = includesV2 ? yield* reconcileV2PreviewMigration() : [];
   if (includesV2) {
+    yield* reconcileThreadCallNamesMigration(THREAD_CALL_NAMES_MIGRATION_ID);
     yield* assertV2MigrationsCanRun(toMigrationInclusive);
   }
   const executedMigrations = [

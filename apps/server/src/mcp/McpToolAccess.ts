@@ -1,3 +1,4 @@
+import { resolveThreadReference } from "./threadCallNameResolution.ts";
 import {
   type EnvironmentId,
   type OrchestrationV2LinkOrigin,
@@ -5,7 +6,7 @@ import {
   OrchestratorMcpFailure,
   type ProviderInteractionMode,
   type RuntimeMode,
-  type ThreadId,
+  ThreadId,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -385,7 +386,33 @@ const routed = Effect.fn("McpToolAccess.routed")(function* <Tools extends Record
   const handlers: Record<string, unknown> = { ...checked };
   for (const [name, declaration] of Object.entries<Declaration<unknown>>(declarations)) {
     const tool = toolkit.tools[name];
-    if (tool === undefined || !takesLinkedEnvironment(tool)) continue;
+    if (tool === undefined) continue;
+    const local = handlers[name] as (
+      params: object,
+    ) => Effect.Effect<unknown, OrchestratorMcpFailure>;
+    const parameters: unknown = tool.parametersSchema;
+    const references = ["threadId", "targetThreadId", "sourceThreadId"].filter(
+      (field) =>
+        Predicate.hasProperty(parameters, "fields") &&
+        Predicate.hasProperty(parameters.fields, field),
+    );
+    if (references.length > 0) {
+      handlers[name] = (params: Record<string, unknown>) =>
+        Effect.gen(function* () {
+          const caller = yield* loadCaller();
+          const resolved = { ...params };
+          for (const field of references) {
+            const reference = params[field];
+            if (typeof reference === "string")
+              resolved[field] = yield* resolveThreadReference(
+                caller.threads,
+                ThreadId.make(reference),
+              );
+          }
+          return yield* local(resolved);
+        });
+    }
+    if (!takesLinkedEnvironment(tool)) continue;
     const remote = remoteCheckOf(declaration);
     if (remote === undefined)
       return yield* Effect.die(

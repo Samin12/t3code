@@ -101,6 +101,8 @@ import {
   DeviceScreenshotToolkit,
   DeviceStandardToolkit,
 } from "./toolkits/device/tools.ts";
+import * as DecisionsHandlers from "./toolkits/decisions/handlers.ts";
+import { DecisionsToolkit } from "./toolkits/decisions/tools.ts";
 import * as HtmlHandlers from "./toolkits/html/handlers.ts";
 import { MessageToolkit } from "./toolkits/message/tools.ts";
 import * as MessageHandlers from "./toolkits/message/handlers.ts";
@@ -1322,6 +1324,8 @@ const imageToolRegistration = <Tools extends Record<string, Tool.Any>, A, E, R, 
     Layer.provide(McpToolAccess.HandlersLayer.layer(handlers)),
   );
 
+export const layerDecisionsToolkit = toolkitRegistration(DecisionsToolkit, DecisionsHandlers.layer);
+
 export const layerHtmlToolkit = Layer.mergeAll(
   toolkitRegistration(HtmlRenderToolkit, HtmlHandlers.layerRender),
   imageToolRegistration(registerHtmlPreview(), HtmlHandlers.layerPreview),
@@ -1458,6 +1462,7 @@ export const layerTools = Layer.mergeAll(
   layerDeviceToolkit,
   layerHtmlToolkit,
   layerMessageToolkit,
+  layerDecisionsToolkit,
 );
 
 const layerToolExposure = Layer.effect(

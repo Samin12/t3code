@@ -1,6 +1,8 @@
 import { msg } from "gt-react";
 import { thrownErrorMessage } from "@t3tools/client-runtime/errors";
 import { m } from "~/i18n/messages";
+import { showLibrarianFiling } from "../../lib/librarianFiling";
+import { prependDecisions } from "./decisionsCard.logic";
 import { isClearComposerCommand, parseSideChatCommand } from "@t3tools/shared/composerTrigger";
 import { readWorktreeBaseBranch } from "../../worktreeRepositoryChoiceStore";
 import { armFreshSession, disarmFreshSession, readFreshSessionArm } from "./freshSessionArms";
@@ -121,6 +123,8 @@ import {
 } from "../../lib/attachmentUploadQueue";
 import { appAtomRegistry } from "../../rpc/atomRegistry";
 import { countPreparingComposerImages, holdComposerSend } from "./preparingComposerImages";
+import { primaryEnvironmentIdAtom } from "../../state/primaryEnvironment";
+import { readHeptabasePromptContext } from "../heptabase/promptContext";
 import { fileAttachmentCapabilityBlockReason } from "./composerAttachmentFiles";
 import { useLinkedEnvironments } from "../../state/peerLinks";
 import { readEnvironmentScope } from "../../state/session";
@@ -818,11 +822,14 @@ export function useComposerSend(input: ComposerSendInput) {
       });
     // A direct "send annotation" writes the draft and sends in the same tick; the reference
     // must be in the text now, not after the next render.
-    const draftPrompt = directAnnotation
-      ? ensureInlineContextReferences(promptAtSend, [
-          previewAnnotationContextReference(directAnnotation.annotation),
-        ])
-      : promptAtSend;
+    const draftPrompt = prependDecisions(
+      sendCtx.decisionsMessage ?? "",
+      directAnnotation
+        ? ensureInlineContextReferences(promptAtSend, [
+            previewAnnotationContextReference(directAnnotation.annotation),
+          ])
+        : promptAtSend,
+    );
     const replyTo =
       useComposerDraftStore.getState().getComposerDraft(composerDraftTarget)?.replyTo ?? null;
     const promptForSend = withReplyReference(draftPrompt, replyTo);
@@ -1057,12 +1064,30 @@ export function useComposerSend(input: ComposerSendInput) {
     );
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
+    let heptabaseContext = "";
+    const heptabaseBridge = window.desktopBridge?.heptabase;
+    if (
+      heptabaseBridge &&
+      activeThread.environmentId === appAtomRegistry.get(primaryEnvironmentIdAtom)
+    ) {
+      sendInFlightRef.current = true;
+      const heptabase = await readHeptabasePromptContext(heptabaseBridge, {
+        environmentId: activeThread.environmentId,
+        threadId: threadIdForSend,
+      });
+      sendInFlightRef.current = false;
+      if (!heptabase.ok) {
+        setThreadError(threadIdForSend, heptabase.error);
+        return;
+      }
+      heptabaseContext = heptabase.context;
+    }
     const outgoingMessageText = formatOutgoingPrompt({
       provider: ctxSelectedProvider,
       model: ctxSelectedModel,
       models: ctxSelectedProviderModels,
       effort: ctxSelectedPromptEffort,
-      text: messageTextForSend || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT,
+      text: (messageTextForSend || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT) + heptabaseContext,
     });
     if (
       isCurrentRouteThread() &&
@@ -1561,6 +1586,7 @@ export function useComposerSend(input: ComposerSendInput) {
           dispatchMode: turnDispatchMode,
           ...(freshArm === undefined ? {} : { freshContext: true }),
           ...(bootstrap ? { bootstrap } : {}),
+          ...(isLocalDraftThread && draftThread?.librarian ? { librarian: true } : {}),
           createdAt: messageCreatedAt,
         },
       });
@@ -1598,6 +1624,7 @@ export function useComposerSend(input: ComposerSendInput) {
             checkoutPullRequestUrl,
           );
         }
+        showLibrarianFiling(startResult.value);
         setKeepFullHistory(routeThreadKey, false);
         if (freshArm !== undefined) disarmFreshSession(routeThreadKey, freshArm);
         clearUsageLimitsFor(routeThreadKey);

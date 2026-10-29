@@ -6,6 +6,7 @@ import {
   DATABASE_MIGRATIONS_FINISHED_MESSAGE,
   DATABASE_MIGRATIONS_STARTED_MESSAGE,
 } from "@t3tools/shared/databaseMigrationLog";
+import { reconcileThreadCallNamesMigration } from "./reconcileThreadCallNamesMigration.ts";
 import { reconcileV2PreviewMigration } from "./reconcileV2PreviewMigration.ts";
 
 import Migration0001 from "./Migrations/001_OrchestrationEvents.ts";
@@ -118,6 +119,9 @@ import Migration0107 from "./Migrations/107_DeferredSlashCommandIndex.ts";
 import Migration0108 from "./Migrations/108_AgentFeedback.ts";
 import Migration0109 from "./Migrations/109_IssueTrackerAccounts.ts";
 import Migration0110 from "./Migrations/110_Workflows.ts";
+import Migration0111 from "./Migrations/111_ThreadCallNames.ts";
+
+const THREAD_CALL_NAMES_MIGRATION_ID = 111;
 
 const migrationEntries = [
   [1, "OrchestrationEvents", Migration0001],
@@ -231,6 +235,7 @@ const migrationEntries = [
   [108, "AgentFeedback", Migration0108],
   [109, "IssueTrackerAccounts", Migration0109],
   [110, "Workflows", Migration0110],
+  [THREAD_CALL_NAMES_MIGRATION_ID, "ThreadCallNames", Migration0111],
 ] as const;
 
 export const migrationManifest = migrationEntries.map(([id, name]) => [id, name] as const);
@@ -325,6 +330,7 @@ export const runMigrations = Effect.fn("runMigrations")(function* ({
   // The reconcile takes the write lock; CLI startup must not contend with the server for a no-op.
   const previewMigrations = includesV2 && hasPending ? yield* reconcileV2PreviewMigration() : [];
   if (includesV2) {
+    if (hasPending) yield* reconcileThreadCallNamesMigration(THREAD_CALL_NAMES_MIGRATION_ID);
     yield* assertV2MigrationsCanRun(toMigrationInclusive);
   }
   const sql = yield* SqlClient.SqlClient;

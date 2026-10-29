@@ -268,6 +268,8 @@
   "c712fec8d9dc6dd6": "{count, plural, other {尝试检查关联的 issue {count} 次}}",
   "537feee59d775e17": "{count, plural, other {已预览 {count} 个 HTML 页面}}",
   "4b45ac8cb8df04a4": "{count, plural, other {尝试预览 {count} 个 HTML 页面}}",
+  "654e1b7a4028ceaa": "{count, plural, one {Prepared {count} decision card} other {Prepared {count} decision cards}}",
+  "496cf81f22e78779": "{count, plural, one {Tried to prepare {count} decision card} other {Tried to prepare {count} decision cards}}",
   "a6f62fca5dd25455": "{count, plural, other {已渲染 {count} 个 HTML 页面}}",
   "3280d45703154eb4": "{count, plural, other {尝试渲染 {count} 个 HTML 页面}}",
   "898770cae17df8d2": "{count, plural, other {已发送 {count} 条消息}}",

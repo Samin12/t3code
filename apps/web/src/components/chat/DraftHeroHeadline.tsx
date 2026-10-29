@@ -4,7 +4,7 @@ import { resolveEnvironmentMachineKind, type ScopedProjectRef } from "@t3tools/c
 import { scopedProjectKey, scopeProjectRef } from "@t3tools/client-runtime/environment";
 import { isScratchProject } from "@t3tools/client-runtime/state/projects";
 import { T, useGT, Var } from "gt-react";
-import { FolderPlusIcon } from "lucide-react";
+import { FolderPlusIcon, LibraryIcon } from "lucide-react";
 import { useAtomValue } from "@effect/atom-react";
 import { useRef, useState } from "react";
 
@@ -69,6 +69,9 @@ export function DraftHeroHeadline({
 }: DraftHeroHeadlineProps) {
   const gt = useGT();
   const projects = useProjects();
+  const librarian = useComposerDraftStore((store) =>
+    draftId ? store.getDraftSession(draftId)?.librarian === true : false,
+  );
   const { environments } = useEnvironments();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const projectGroupingSettings = useClientSettings(selectProjectGroupingSettings);
@@ -180,10 +183,10 @@ export function DraftHeroHeadline({
     pendingScratchRef.current = null;
     const projectRef = scopeProjectRef(project.environmentId, project.id);
     if (!composerDraftHasUserContent(getComposerDraft(draftId))) {
-      void openProjectDraft(projectRef);
+      void openProjectDraft(projectRef, { librarian: false });
       return;
     }
-    setLogicalProjectDraftThreadId(logicalProjectKey, projectRef, draftId);
+    setLogicalProjectDraftThreadId(logicalProjectKey, projectRef, draftId, { librarian: false });
     seedDraftModelSelection(draftId, projectRef);
   };
   const startScratch = async (): Promise<boolean> => {
@@ -217,7 +220,7 @@ export function DraftHeroHeadline({
         setPickerOpen(open);
         setPickerQuery("");
       }}
-      value={selectedPickerItem}
+      value={librarian ? null : selectedPickerItem}
       onValueChange={(item) => {
         if (!item) return;
         setPickerOpen(false);
@@ -226,7 +229,7 @@ export function DraftHeroHeadline({
           return;
         }
         const entry = projectEntryByKey.get(item.value);
-        if (!entry || item.value === activeProjectKey) {
+        if (!entry || (item.value === activeProjectKey && !librarian)) {
           return;
         }
         selectProject(entry.targetProject, entry.group.projectKey);
@@ -242,15 +245,22 @@ export function DraftHeroHeadline({
             />
           }
         >
+          {librarian ? <LibraryIcon className="mr-2 inline size-5" /> : null}
           <DraftProjectName
             value={
-              isScratchDraft ? gt("No project") : (activeProjectTitle ?? gt("Choose a project"))
+              librarian
+                ? "Librarian"
+                : isScratchDraft
+                  ? gt("No project")
+                  : (activeProjectTitle ?? gt("Choose a project"))
             }
             singleLine
           />
         </TooltipTrigger>
         {activeProjectTitle && !isScratchDraft ? (
-          <TooltipPopup side="top">{activeProjectTitle}</TooltipPopup>
+          <TooltipPopup side="top">
+            {librarian ? gt("The librarian picks the project when you send") : activeProjectTitle}
+          </TooltipPopup>
         ) : null}
       </Tooltip>
       <ComboboxPopup align="center" className="w-72 overflow-hidden">
@@ -360,7 +370,9 @@ export function DraftHeroHeadline({
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col items-center">
       {hasResolvedProject && !isScratchDraft ? (
-        <DraftHeroProjectHeading projectName={activeProjectTitle ?? gt("Choose a project")}>
+        <DraftHeroProjectHeading
+          projectName={librarian ? "Librarian" : (activeProjectTitle ?? gt("Choose a project"))}
+        >
           {projectSelector}
         </DraftHeroProjectHeading>
       ) : (

@@ -407,6 +407,7 @@ const PersistedDraftThreadState = Schema.Struct({
   threadId: ThreadId,
   environmentId: Schema.String,
   projectId: ProjectId,
+  librarian: Schema.optionalKey(Schema.Boolean),
   logicalProjectKey: Schema.optionalKey(Schema.String),
   environmentSelection: Schema.optionalKey(Schema.Literals(["auto", "manual"])),
   loadBalancedEnvironmentId: Schema.optionalKey(Schema.NullOr(Schema.String)),
@@ -507,6 +508,7 @@ export interface DraftSessionState {
   threadId: ThreadId;
   environmentId: EnvironmentId;
   projectId: ProjectId;
+  librarian?: boolean;
   logicalProjectKey: string;
   environmentSelection?: "auto" | "manual";
   loadBalancedEnvironmentId?: EnvironmentId | null;
@@ -587,6 +589,7 @@ interface ComposerDraftStoreState {
     draftId: DraftId,
     options?: {
       threadId?: ThreadId;
+      librarian?: boolean;
       branch?: string | null;
       worktreePath?: string | null;
       createdAt?: string;
@@ -604,6 +607,7 @@ interface ComposerDraftStoreState {
     draftId: DraftId,
     options?: {
       threadId?: ThreadId;
+      librarian?: boolean;
       branch?: string | null;
       worktreePath?: string | null;
       createdAt?: string;
@@ -622,6 +626,7 @@ interface ComposerDraftStoreState {
       branch?: string | null;
       worktreePath?: string | null;
       projectRef?: ScopedProjectRef;
+      librarian?: boolean;
       createdAt?: string;
       envMode?: DraftThreadEnvMode;
       startFromOrigin?: boolean;
@@ -1724,6 +1729,7 @@ function createDraftThreadState(
   existingThread: DraftThreadState | undefined,
   options?: {
     threadId?: ThreadId;
+    librarian?: boolean;
     branch?: string | null;
     worktreePath?: string | null;
     createdAt?: string;
@@ -1767,6 +1773,7 @@ function createDraftThreadState(
     threadId,
     environmentId: projectRef.environmentId,
     projectId: projectRef.projectId,
+    librarian: options?.librarian ?? existingThread?.librarian ?? false,
     logicalProjectKey,
     ...(environmentSelection ? { environmentSelection } : {}),
     ...(options?.loadBalancedEnvironmentId !== undefined
@@ -1841,6 +1848,7 @@ function draftThreadsEqual(left: DraftThreadState | undefined, right: DraftThrea
     left.threadId === right.threadId &&
     left.environmentId === right.environmentId &&
     left.projectId === right.projectId &&
+    left.librarian === right.librarian &&
     left.logicalProjectKey === right.logicalProjectKey &&
     left.environmentSelection === right.environmentSelection &&
     left.loadBalancedEnvironmentId === right.loadBalancedEnvironmentId &&
@@ -1992,6 +2000,7 @@ function normalizePersistedDraftThreads(
         threadId,
         environmentId: normalizedEnvironmentId,
         projectId: projectId as ProjectId,
+        librarian: candidateDraftThread.librarian === true,
         logicalProjectKey:
           typeof candidateDraftThread.logicalProjectKey === "string" &&
           candidateDraftThread.logicalProjectKey.length > 0
@@ -2789,6 +2798,7 @@ function toHydratedDraftThreadState(
     threadId: persistedDraftThread.threadId,
     environmentId: persistedDraftThread.environmentId as EnvironmentId,
     projectId: persistedDraftThread.projectId,
+    librarian: persistedDraftThread.librarian ?? false,
     logicalProjectKey:
       persistedDraftThread.logicalProjectKey ??
       projectDraftKey(
@@ -3093,6 +3103,7 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
               threadId: existing.threadId,
               environmentId: nextProjectRef.environmentId,
               projectId: nextProjectRef.projectId,
+              librarian: options.librarian ?? existing.librarian ?? false,
               logicalProjectKey: existing.logicalProjectKey,
               ...(environmentSelection ? { environmentSelection } : {}),
               loadBalancedEnvironmentId:
@@ -3119,6 +3130,7 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
             const isUnchanged =
               nextDraftThread.environmentId === existing.environmentId &&
               nextDraftThread.projectId === existing.projectId &&
+              nextDraftThread.librarian === existing.librarian &&
               nextDraftThread.logicalProjectKey === existing.logicalProjectKey &&
               nextDraftThread.environmentSelection === existing.environmentSelection &&
               nextDraftThread.loadBalancedEnvironmentId === existing.loadBalancedEnvironmentId &&

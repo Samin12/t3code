@@ -28,6 +28,7 @@ describe("surface shortcuts", () => {
     { shortcut: "D", available: false, label: "Diff" },
     { shortcut: "T", available: true, label: "Terminal" },
     { shortcut: "M", available: true, label: "Device" },
+    { shortcut: "V", available: true, label: "Mac" },
   ] as const;
 
   it("falls back to the physical key when the layout types a non-Latin letter or mark", () => {
@@ -54,6 +55,10 @@ describe("surface shortcuts", () => {
   });
 
   it("follows the typed letter on Latin layouts that move it", () => {
+    expect(surfaceShortcutActionForKey(actions, shortcutEvent("v"))).toBe(actions[4]);
+    expect(
+      surfaceShortcutActionForKey(actions, shortcutEvent("v", { defaultPrevented: true })),
+    ).toBeNull();
     // Dvorak: the key at QWERTY B types "x", and "b" sits on QWERTY N.
     expect(surfaceShortcutActionForKey(actions, shortcutEvent("x", { code: "KeyB" }))).toBeNull();
     // The same key with Shift or Caps Lock types "X".

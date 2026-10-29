@@ -817,6 +817,23 @@ export function summarizeT3ToolCalls(
           );
       break;
     }
+    case "decisions": {
+      const count = selected.length;
+      label = done
+        ? resolve(
+            msg(
+              "{count, plural, one {Prepared {count} decision card} other {Prepared {count} decision cards}}",
+              { count },
+            ),
+          )
+        : resolve(
+            msg(
+              "{count, plural, one {Tried to prepare {count} decision card} other {Tried to prepare {count} decision cards}}",
+              { count },
+            ),
+          );
+      break;
+    }
     case "html-render": {
       const count = selected.length;
       label = done

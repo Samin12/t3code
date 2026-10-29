@@ -2730,6 +2730,7 @@ export const CLAUDE_READ_ONLY_T3_MCP_ALLOWED_TOOLS: ReadonlyArray<string> = [
   "mcp__t3-code__html_render",
   "mcp__t3-code__send_to_user",
   "mcp__t3-code__t3_submit_output",
+  "mcp__t3-code__end_turn",
 ];
 
 // request_secret can wait an hour; exceed Claude's default 60 s timeout.

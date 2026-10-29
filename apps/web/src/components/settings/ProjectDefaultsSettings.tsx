@@ -9,6 +9,7 @@ import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import { useNavigate } from "@tanstack/react-router";
 import { T, useGT, useMessages } from "gt-react";
 
+import { LibrarianSettings } from "./LibrarianSettings";
 import { useClientSettings } from "../../hooks/useSettings";
 import {
   defaultModelSelectionsAreMixed,
@@ -363,6 +364,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
         </>
       ) : category === "general" ? (
         <>
+          <LibrarianSettings />
           {modelRow}
           {fallbackRow}
           <SettingsRow

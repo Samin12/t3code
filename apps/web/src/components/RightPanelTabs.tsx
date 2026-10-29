@@ -36,6 +36,7 @@ import { restrictToFirstScrollableAncestor, restrictToHorizontalAxis } from "@dn
 import { horizontalListSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  PanelsTopLeft,
   Smartphone,
   ChevronDown,
   ChevronLeft,
@@ -143,6 +144,8 @@ export interface RightPanelTabsProps {
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
+  onAddHeptabase?: (() => void) | undefined;
+  heptabaseAvailable?: boolean | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -324,6 +327,8 @@ function RightPanelEmptyState(props: {
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
+  onAddHeptabase?: (() => void) | undefined;
+  heptabaseAvailable?: boolean | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -384,6 +389,14 @@ function RightPanelEmptyState(props: {
       available: props.pullRequestsAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.pullRequests,
       onClick: props.onAddPullRequests,
+    },
+    {
+      label: "Heptabase",
+      icon: PanelsTopLeft,
+      shortcut: "H",
+      available: props.heptabaseAvailable ?? false,
+      disabledReason: "Available in the desktop app with a local thread.",
+      onClick: () => props.onAddHeptabase?.(),
     },
     {
       label: "Device",
@@ -590,6 +603,8 @@ function surfaceTitle(
       return `#${surface.number}`;
     case "pull-requests":
       return "Pull requests";
+    case "heptabase":
+      return "Heptabase";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
     case "side-chat":
@@ -684,6 +699,8 @@ function SurfaceIcon({
       return <PullRequestGlyph.link className="size-3 shrink-0" />;
     case "side-chat":
       return <SideChatTabIcon environmentId={environmentId} threadId={surface.threadId} />;
+    case "heptabase":
+      return <PanelsTopLeft className="size-3 shrink-0" />;
     case "device":
       return surface.target?.platform === "ios" ? (
         <AppleIcon className="size-3 shrink-0" />
@@ -1140,6 +1157,14 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       onClick: props.onAddPullRequests,
     },
     {
+      label: "Heptabase",
+      icon: PanelsTopLeft,
+      shortcut: "H",
+      available: props.heptabaseAvailable ?? false,
+      disabledReason: "Available in the desktop app with a local thread.",
+      onClick: () => props.onAddHeptabase?.(),
+    },
+    {
       label: "Device",
       icon: Smartphone,
       shortcut: "M",
@@ -1543,6 +1568,8 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             deviceAvailable={props.deviceAvailable}
             sideChatAvailable={props.sideChatAvailable === true}
             sideChatDisabledReason={props.sideChatDisabledReason ?? null}
+            onAddHeptabase={props.onAddHeptabase}
+            heptabaseAvailable={props.heptabaseAvailable}
           />
         ) : (
           props.children

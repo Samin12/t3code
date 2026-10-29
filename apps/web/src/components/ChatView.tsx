@@ -2343,6 +2343,7 @@ export default function ChatView(props: ChatViewProps) {
     addDeviceSurfaceStable,
     addDiffSurfaceStable,
     addFilesSurfaceStable,
+    addHeptabaseSurfaceStable,
     addPullRequestSurfaceStable,
     addPullRequestsSurfaceStable,
     closePreviewPanelStable,
@@ -3195,6 +3196,7 @@ export default function ChatView(props: ChatViewProps) {
       threadRef={activeThreadRef}
       environmentId={activeThread.environmentId}
       visible={rightPanelOpen}
+      threadTitle={activeThread.title}
       composerDraftTarget={composerDraftTarget}
       keybindings={keybindings}
       configuredPreviewUrls={configuredPreviewUrls}
@@ -3989,6 +3991,11 @@ export default function ChatView(props: ChatViewProps) {
           onAddSideChat={sideChatsOffered ? openSideChatStable : undefined}
           browserAvailable={canOperatePreview && browserAvailable}
           terminalAvailable={activeProject !== null && canOperateTerminal}
+          onAddHeptabase={addHeptabaseSurfaceStable}
+          heptabaseAvailable={
+            Boolean(window.desktopBridge?.heptabase) &&
+            activeThread.environmentId === primaryEnvironmentId
+          }
           diffAvailable={isServerThread && isGitRepo}
           filesAvailable={activeProject !== null}
           pullRequestAvailable={pullRequestSurfaceAvailable}

@@ -1,3 +1,4 @@
+import * as Heptabase from "./heptabase/Heptabase.ts";
 import * as MacPermissions from "./permissions/MacPermissions.ts";
 for (const stream of [process.stdout, process.stderr]) {
   stream.on("error", (err: NodeJS.ErrnoException) => {
@@ -25,13 +26,13 @@ import serverPackageJson from "../../server/package.json" with { type: "json" };
 import * as DesktopIpc from "./ipc/DesktopIpc.ts";
 import * as ElectronApp from "./electron/ElectronApp.ts";
 import * as ElectronDialog from "./electron/ElectronDialog.ts";
+import * as ElectronUpdater from "./electron/ElectronUpdater.ts";
 import * as ElectronMenu from "./electron/ElectronMenu.ts";
 import * as ElectronPowerMonitor from "./electron/ElectronPowerMonitor.ts";
 import * as ElectronProtocol from "./electron/ElectronProtocol.ts";
 import * as ElectronSafeStorage from "./electron/ElectronSafeStorage.ts";
 import * as ElectronShell from "./electron/ElectronShell.ts";
 import * as ElectronTheme from "./electron/ElectronTheme.ts";
-import * as ElectronUpdater from "./electron/ElectronUpdater.ts";
 import * as ElectronWindow from "./electron/ElectronWindow.ts";
 import * as DesktopApp from "./app/DesktopApp.ts";
 import * as DesktopAppActivation from "./app/DesktopAppActivation.ts";
@@ -67,6 +68,7 @@ import * as DesktopLegacyLocalStorage from "./app/DesktopLegacyLocalStorage.ts";
 import * as DesktopTelemetryPublisher from "./telemetry/DesktopTelemetryPublisher.ts";
 import * as DesktopRendererHistory from "./telemetry/DesktopRendererHistory.ts";
 import * as DesktopUpdatePolicy from "./updates/DesktopUpdatePolicy.ts";
+import * as CustomNightlyUpdater from "./updates/CustomNightlyUpdater.ts";
 import * as DesktopUpdates from "./updates/DesktopUpdates.ts";
 import * as BrowserImport from "./preview/BrowserImport/BrowserImport.ts";
 import * as LinuxBrowserSecret from "./preview/BrowserImport/LinuxBrowserSecret.ts";
@@ -136,12 +138,15 @@ const layerElectron = Layer.mergeAll(
   ElectronSafeStorage.layer,
   ElectronShell.layer,
   ElectronTheme.layer,
-  ElectronUpdater.layer,
+  Electron.app.isPackaged || process.env.T3CODE_CUSTOM_UPDATE_SCRIPT
+    ? CustomNightlyUpdater.layer
+    : ElectronUpdater.layer,
   ElectronWindow.layer,
   DesktopIpc.layer(Electron.ipcMain),
 );
 
 const layerDesktopFoundation = Layer.mergeAll(
+  Heptabase.layer,
   MacPermissions.layer,
   DesktopManagedPolicy.layer,
   DesktopState.layer,

@@ -376,6 +376,7 @@ export function commandLabel(command: KeybindingCommand): string {
   if (command === "thread.steerQueuedMessage") return "Queue: Send First Queued Message";
   if (command === "thread.editQueuedMessage") return "Queue: Edit Last Queued Message";
   if (command === "thread.copyReference") return "Pull Request: Copy Link or Thread";
+  if (command === "thread.handoff") return "Thread: Hand Off";
   const usageMetric = METRIC_OPTIONS.find((option) => option.command === command);
   if (usageMetric) return `Usage: ${usageMetric.label}`;
   const usagePeriod = WINDOW_OPTIONS.find((option) => option.command === command);
@@ -385,6 +386,9 @@ export function commandLabel(command: KeybindingCommand): string {
   const raw = String(command);
   if (raw.startsWith("script.") && raw.endsWith(".run")) {
     return `Run Script: ${titleCaseCommandSegment(raw.slice("script.".length, -".run".length))}`;
+  }
+  if (raw.startsWith("project.") && raw.endsWith(".newThread")) {
+    return `New Thread in Project: ${titleCaseCommandSegment(raw.slice("project.".length, -".newThread".length))}`;
   }
   return raw.split(".").map(titleCaseCommandSegment).join(": ");
 }

@@ -73,6 +73,30 @@ function unwrapEnsureSshEnvironmentResult(result: unknown) {
 }
 
 contextBridge.exposeInMainWorld("desktopBridge", {
+  terminalMac: {
+    request: (input) => ipcRenderer.invoke(IpcChannels.TERMINAL_MAC_REQUEST_CHANNEL, input),
+    subscribe: (listener) => {
+      // @effect-diagnostics-next-line cryptoRandomUUID:off -- Preload has no Effect runtime; this is a renderer subscription token.
+      const id = globalThis.crypto.randomUUID();
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        event: import("@t3tools/contracts").TerminalMacEvent,
+      ) => listener(event);
+      ipcRenderer.on(IpcChannels.TERMINAL_MAC_EVENT_CHANNEL, handler);
+      void ipcRenderer
+        .invoke(IpcChannels.TERMINAL_MAC_SUBSCRIPTION_CHANNEL, { id, active: true })
+        .catch((error: unknown) => listener({ type: "error", message: String(error) }));
+      return () => {
+        ipcRenderer.removeListener(IpcChannels.TERMINAL_MAC_EVENT_CHANNEL, handler);
+        void ipcRenderer
+          .invoke(IpcChannels.TERMINAL_MAC_SUBSCRIPTION_CHANNEL, { id, active: false })
+          .catch(() => undefined);
+      };
+    },
+  },
+  heptabase: {
+    request: (input) => ipcRenderer.invoke(IpcChannels.HEPTABASE_REQUEST_CHANNEL, input),
+  },
   getAppBranding: () => {
     const result = ipcRenderer.sendSync(IpcChannels.GET_APP_BRANDING_CHANNEL);
     if (typeof result !== "object" || result === null) {

@@ -43,6 +43,7 @@ import {
 } from "@t3tools/client-runtime/state/project-grouping";
 import { buildPhysicalToLogicalProjectKeyMap } from "../sidebarProjectGrouping";
 import { threadRuntimeCanArchive } from "@t3tools/client-runtime/state/models";
+import { requestProviderHandoff } from "../providerHandoffBus";
 import { useCopyToClipboard } from "./useCopyToClipboard";
 import { useNewThreadHandler } from "./useHandleNewThread";
 import { useClientSettings } from "./useSettings";
@@ -208,6 +209,9 @@ export function useThreadActionMenu(input: {
           });
           return;
         }
+        case "handoff":
+          requestProviderHandoff({ threadRef });
+          return;
         case "new-thread-on-branch": {
           const result = await settlePromise(() =>
             handleNewThread(scopeProjectRef(threadRef.environmentId, thread.projectId), {

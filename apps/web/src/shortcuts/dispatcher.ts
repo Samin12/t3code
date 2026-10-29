@@ -21,6 +21,8 @@ export interface CommandScopeOptions {
   readonly keybindings?: () => ResolvedKeybindingsConfig;
   /** For shortcuts that are not keybinding commands (Escape, "/"); runs before command lookup. */
   readonly onKeyDown?: CommandHandler;
+  /** Handlers for pattern commands (`project.<slug>.newThread`) the static map cannot list. */
+  readonly resolveCommand?: (command: KeybindingCommand) => CommandHandler | undefined;
   /**
    * Run in the capture phase, ahead of focused widgets that consume the key
    * themselves (the terminal encodes Ctrl+Shift+T and stops propagation).
@@ -66,7 +68,8 @@ function runScope(scope: CommandScope, event: KeyboardEvent): boolean {
     options.keybindings?.() ?? appAtomRegistry.get(primaryServerKeybindingsAtom),
     { context: { ...readFocusContext(event), ...options.context?.() } },
   );
-  const handler = command === null ? undefined : commands[command];
+  const handler =
+    command === null ? undefined : (commands[command] ?? options.resolveCommand?.(command));
   if (handler === undefined) return false;
   if (isInsideConfirmation(event.target)) {
     event.preventDefault();

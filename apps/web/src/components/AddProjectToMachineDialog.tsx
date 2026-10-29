@@ -175,7 +175,7 @@ function AddProjectToMachineDialog({ request }: { request: AddProjectToMachineRe
       });
       return;
     }
-    void handleNewThread(targetRef);
+    void handleNewThread(targetRef, { librarian: false });
   };
 
   const submit = async () => {

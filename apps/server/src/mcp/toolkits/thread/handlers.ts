@@ -125,17 +125,54 @@ export const layer = McpToolAccess.toLayer(ThreadToolkit, {
   ),
   t3_thread_search: McpToolAccess.reads((input) =>
     Effect.gen(function* () {
-      const { caller } = yield* readCaller();
+      const { caller, threads } = yield* readCaller();
       const scope = yield* McpInvocationContext.McpInvocationContext;
       const threadSearch = yield* ThreadSearch.ThreadSearch;
       const { matches } = yield* threadSearch
         .searchThreads({ ...input, projectId: input.projectId ?? caller?.projectId })
         .pipe(Effect.mapError(unavailable));
+      const projectId = input.projectId ?? caller?.projectId;
+      const snapshot = yield* threads
+        .getShellSnapshot({
+          location: "active",
+          ...(projectId === undefined ? {} : { projectId }),
+        })
+        .pipe(Effect.mapError(unavailable));
+      const shells = snapshot.threads;
+      const byId = new Map(shells.map((thread) => [thread.id, thread]));
+      const query = input.query.trim().toLowerCase();
+      const named = shells
+        .filter(
+          (thread) =>
+            thread.archivedAt === null &&
+            thread.deletedAt === null &&
+            thread.callName?.toLowerCase() === query,
+        )
+        .sort(
+          (left, right) =>
+            Number(left.settledOverride === "settled") -
+            Number(right.settledOverride === "settled"),
+        );
+      const namedIds = new Set(named.map((thread) => thread.id));
       return {
-        matches: matches.map((match) => ({
-          ...match,
-          link: McpInvocationContext.threadLinkFor(scope, match.threadId),
-        })),
+        matches: [
+          ...named.map((thread) => ({
+            threadId: thread.id,
+            projectId: thread.projectId,
+            title: thread.title,
+            source: "title" as const,
+          })),
+          ...matches.filter((match) => !namedIds.has(match.threadId)),
+        ]
+          .slice(0, input.limit ?? 50)
+          .map((match) => {
+            const callName = byId.get(match.threadId)?.callName;
+            return {
+              ...match,
+              ...(callName === undefined ? {} : { callName }),
+              link: McpInvocationContext.threadLinkFor(scope, match.threadId),
+            };
+          }),
       };
     }),
   ),

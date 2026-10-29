@@ -55,6 +55,7 @@ import {
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeftIcon,
+  ArrowRightLeftIcon,
   BugIcon,
   ChartNoAxesColumnIcon,
   CheckIcon,
@@ -89,6 +90,7 @@ import {
 } from "react";
 import type { LegendListRef } from "@legendapp/list/react";
 import { useAtomValue } from "@effect/atom-react";
+import { requestProviderHandoff } from "../providerHandoffBus";
 
 import { isDesktopLocalConnectionTarget } from "../connection/desktopLocal";
 import { useDesktopLocalBootstraps } from "../connection/useDesktopLocalBootstraps";
@@ -806,7 +808,7 @@ function OpenCommandPaletteDialog(props: {
       return;
     }
 
-    await handleNewThread(scopeProjectRef(project.environmentId, project.id));
+    await handleNewThread(scopeProjectRef(project.environmentId, project.id), { librarian: false });
   };
 
   // Pinning from a row keeps rows in place while the palette is open.
@@ -844,6 +846,7 @@ function OpenCommandPaletteDialog(props: {
             contextualRefBelongsToGroup
               ? contextualProjectRef
               : scopeProjectRef(project.environmentId, project.id),
+            { librarian: false },
           );
         },
       });
@@ -1331,6 +1334,18 @@ function OpenCommandPaletteDialog(props: {
     });
   }
 
+  if (activeThread !== null) {
+    const threadRef = scopeThreadRef(activeThread.environmentId, activeThread.id);
+    actionItems.push({
+      kind: "action",
+      value: "action:handoff-thread",
+      searchTerms: ["hand off", "handoff", "switch model", "switch provider", "switch account"],
+      title: "Hand off to another model",
+      icon: <ArrowRightLeftIcon className={ITEM_ICON_CLASS} />,
+      shortcutCommand: "thread.handoff",
+      run: async () => requestProviderHandoff({ threadRef }),
+    });
+  }
   const promptLinkTarget = paletteRouteTarget
     ? paletteRouteTarget.kind === "server"
       ? paletteRouteTarget.threadRef
@@ -1851,7 +1866,9 @@ function OpenCommandPaletteDialog(props: {
         });
       } else {
         const navigationResult = await settlePromise(() =>
-          handleNewThread(scopeProjectRef(existing.environmentId, existing.id)),
+          handleNewThread(scopeProjectRef(existing.environmentId, existing.id), {
+            librarian: false,
+          }),
         );
         if (navigationResult._tag === "Failure") {
           const error = squashAtomCommandFailure(navigationResult);
@@ -1905,7 +1922,7 @@ function OpenCommandPaletteDialog(props: {
     }
 
     const navigationResult = await settlePromise(() =>
-      handleNewThread(scopeProjectRef(input.environmentId, projectId)),
+      handleNewThread(scopeProjectRef(input.environmentId, projectId), { librarian: false }),
     );
     if (navigationResult._tag === "Failure") {
       const error = squashAtomCommandFailure(navigationResult);
@@ -2160,7 +2177,9 @@ function OpenCommandPaletteDialog(props: {
     );
     const projectRef = scopeProjectRef(addProjectCloneFlow.environmentId, projectId);
     await waitForProject(projectRef, 3_000).catch(() => null);
-    const navigationResult = await settlePromise(() => handleNewThread(projectRef));
+    const navigationResult = await settlePromise(() =>
+      handleNewThread(projectRef, { librarian: false }),
+    );
     if (navigationResult._tag === "Failure") {
       const error = squashAtomCommandFailure(navigationResult);
       toastManager.add(
@@ -2526,6 +2545,16 @@ function OpenCommandPaletteDialog(props: {
           title: "Thread search is unavailable on this server.",
           description: "Update the server to enable it.",
         });
+      return;
+    }
+    if (command === "thread.handoff") {
+      event.preventDefault();
+      event.stopPropagation();
+      if (activeThread === null) return;
+      setOpen(false);
+      requestProviderHandoff({
+        threadRef: scopeThreadRef(activeThread.environmentId, activeThread.id),
+      });
       return;
     }
 

@@ -1268,6 +1268,17 @@ describe("HTML renders in the timeline", () => {
       supportsConversationRollback: false,
     }).map((row) => row.kind);
 
+  it("keeps completed decision cards out of the work log", () => {
+    const entries = turn({
+      ...base("render", 2),
+      type: "dynamic_tool",
+      toolName: "mcp__t3-code__end_turn",
+      input: {},
+      output: { decisions: { needs: "you", asks: [{ question: "Ship?" }] } },
+    });
+    expect(entries.some((entry) => entry.id === "render")).toBe(false);
+  });
+
   it("shows a completed render in place, above the reply, through the turn fold", () => {
     const entries = turn(
       renderCall("completed", { structuredContent: { htmlRender }, content: [] }),

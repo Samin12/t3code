@@ -38,52 +38,58 @@ function project(id: string): Project {
 
 describe("sidebar header new thread", () => {
   it.each([
-    { mode: "normal", count: 2, shift: false, picker: true },
-    { mode: "boring", count: 2, shift: false, picker: true },
-    { mode: "boring", count: 2, shift: true, picker: false },
-    { mode: "boring", count: 1, shift: false, picker: false },
-    { mode: "legacy", count: 2, shift: false, picker: false },
-  ] as const)("$mode sidebar, $count projects, shift=$shift: picker=$picker", async (scenario) => {
-    using stack = new DisposableStack();
-    const previousSettings = getClientSettings();
-    stack.defer(() => __setClientSettingsForTests(previousSettings));
-    __setClientSettingsForTests({
-      ...DEFAULT_CLIENT_SETTINGS,
-      boringSidebarEnabled: scenario.mode === "boring",
-      legacySidebarEnabled: scenario.mode === "legacy",
-    });
-    const projects = [project("active"), project("idle")].slice(0, scenario.count);
-    const currentProjectRef = {
-      environmentId: projects[0]!.environmentId,
-      projectId: projects[0]!.id,
-    };
-    const startThread = vi.fn().mockResolvedValue(null);
-    vi.mocked(useProjects).mockReturnValue(projects);
-    vi.mocked(useHandleNewThread).mockReturnValue({
-      activeDraftThread: null,
-      activeThread: null,
-      defaultProjectRef: currentProjectRef,
-      handleNewThread: startThread,
-      routeDraftId: null,
-      routeThreadRef: null,
-    });
-    vi.mocked(openCommandPalette).mockClear();
-    await using screen = await render(
-      <SidebarProvider>
-        <Sidebar routeReveal={{ observedKey: null, pendingKey: null }} />
-      </SidebarProvider>,
-    );
+    { mode: "normal", count: 2, shift: false, librarian: false, picker: true },
+    { mode: "boring", count: 2, shift: false, librarian: false, picker: true },
+    { mode: "boring", count: 2, shift: true, librarian: false, picker: false },
+    { mode: "boring", count: 1, shift: false, librarian: false, picker: false },
+    { mode: "legacy", count: 2, shift: false, librarian: false, picker: false },
+    // The librarian picks the project on send, so there's nothing to pick first.
+    { mode: "normal", count: 2, shift: false, librarian: true, picker: false },
+  ] as const)(
+    "$mode sidebar, $count projects, shift=$shift, librarian=$librarian: picker=$picker",
+    async (scenario) => {
+      using stack = new DisposableStack();
+      const previousSettings = getClientSettings();
+      stack.defer(() => __setClientSettingsForTests(previousSettings));
+      __setClientSettingsForTests({
+        ...DEFAULT_CLIENT_SETTINGS,
+        boringSidebarEnabled: scenario.mode === "boring",
+        legacySidebarEnabled: scenario.mode === "legacy",
+        newThreadsUseLibrarian: scenario.librarian,
+      });
+      const projects = [project("active"), project("idle")].slice(0, scenario.count);
+      const currentProjectRef = {
+        environmentId: projects[0]!.environmentId,
+        projectId: projects[0]!.id,
+      };
+      const startThread = vi.fn().mockResolvedValue(null);
+      vi.mocked(useProjects).mockReturnValue(projects);
+      vi.mocked(useHandleNewThread).mockReturnValue({
+        activeDraftThread: null,
+        activeThread: null,
+        defaultProjectRef: currentProjectRef,
+        handleNewThread: startThread,
+        routeDraftId: null,
+        routeThreadRef: null,
+      });
+      vi.mocked(openCommandPalette).mockClear();
+      await using screen = await render(
+        <SidebarProvider>
+          <Sidebar routeReveal={{ observedKey: null, pendingKey: null }} />
+        </SidebarProvider>,
+      );
 
-    await userEvent.click(screen.getByRole("button", { name: "New thread", exact: true }), {
-      modifiers: scenario.shift ? ["Shift"] : [],
-    });
+      await userEvent.click(screen.getByRole("button", { name: "New thread", exact: true }), {
+        modifiers: scenario.shift ? ["Shift"] : [],
+      });
 
-    if (scenario.picker) {
-      expect(openCommandPalette).toHaveBeenCalledExactlyOnceWith({ open: "new-thread-in" });
-      expect(startThread).not.toHaveBeenCalled();
-    } else {
-      expect(openCommandPalette).not.toHaveBeenCalled();
-      expect(startThread).toHaveBeenCalledExactlyOnceWith(currentProjectRef);
-    }
-  });
+      if (scenario.picker) {
+        expect(openCommandPalette).toHaveBeenCalledExactlyOnceWith({ open: "new-thread-in" });
+        expect(startThread).not.toHaveBeenCalled();
+      } else {
+        expect(openCommandPalette).not.toHaveBeenCalled();
+        expect(startThread).toHaveBeenCalledExactlyOnceWith(currentProjectRef);
+      }
+    },
+  );
 });

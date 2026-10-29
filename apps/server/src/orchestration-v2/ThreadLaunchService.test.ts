@@ -1,3 +1,4 @@
+import * as ProjectLibrarian from "../librarian/ProjectLibrarian.ts";
 import * as DocumentText from "../provider/DocumentText.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
 import * as WorktreeSetupTracker from "../project/WorktreeSetupTracker.ts";
@@ -118,6 +119,7 @@ const claudeAdapter = {
 } as ProviderAdapter.ProviderAdapterV2["Service"];
 
 interface HarnessOptions {
+  readonly librarian?: ProjectLibrarian.ProjectLibrarian["Service"]["route"];
   readonly closeTerminal?: TerminalManager.TerminalManager["Service"]["close"];
   readonly adapters?: ReadonlyArray<ProviderAdapter.ProviderAdapterV2["Service"]>;
   readonly managedFolders?: Layer.Layer<ManagedProjectFolders.ManagedProjectFolders>;
@@ -221,6 +223,20 @@ function makeHarness(options: HarnessOptions = {}) {
     Layer.mock(TextGeneration.TextGeneration)({
       generateThreadTitle,
       generateBranchName,
+    }),
+    Layer.mock(ProjectLibrarian.ProjectLibrarian)({
+      route:
+        options.librarian ??
+        ((input) =>
+          Effect.succeed({
+            projectId: input.fallbackProjectId,
+            projectTitle: "Project",
+            reason: "Catch-all",
+            createdProject: false,
+            via: "fallback",
+          })),
+      record: () => Effect.void,
+      filingForThread: () => Effect.undefined,
     }),
     layerServerSettings,
     ProviderRegistryMock.layer(options.providers),
@@ -2491,4 +2507,79 @@ it.effect("replays an accepted send after the project disables the instance", ()
       assert.fail(`expected ThreadManagementProviderInstanceDisabledError, got ${fresh._tag}`);
     }
   }).pipe(Effect.provide(Layer.mergeAll(harness.layer, layerFiles)));
+});
+
+it.effect(
+  "intake files before launching, drops a different project's worktree, and retries in the original project",
+  () => {
+    let calls = 0;
+    const harness = makeHarness({
+      librarian: () =>
+        Effect.sync(() => {
+          calls++;
+          return {
+            projectId: calls === 1 ? otherProjectId : projectId,
+            projectTitle: "Other",
+            reason: "Works on the other repo",
+            createdProject: false,
+            via: "model" as const,
+          };
+        }),
+    });
+    return Effect.gen(function* () {
+      const input = {
+        ...launchInput({
+          command: "librarian-launch",
+          thread: "librarian-thread",
+          message: "Fix the other app",
+          workspace: { type: "worktree", baseRef: "main" },
+        }),
+        librarian: true,
+      };
+      const first = yield* ThreadMessageIntake.launchThread(input);
+      assert.equal(first.projection.thread.projectId, otherProjectId);
+      assert.equal(first.projection.runs[0]?.workspacePreparation?.type, "root");
+      assert.deepEqual(first.projection.thread.modelSelection, input.modelSelection);
+      assert.equal(first.librarian?.projectTitle, "Other");
+      const replay = yield* ThreadMessageIntake.launchThread(input);
+      assert.equal(replay.projection.thread.projectId, otherProjectId);
+      assert.equal(replay.resumed, true);
+      assert.equal(calls, 1);
+      assert.equal(harness.createWorktree.mock.calls.length, 0);
+    }).pipe(
+      Effect.provide(
+        Layer.mergeAll(
+          harness.layer,
+          ServerConfig.layerTest(process.cwd(), { prefix: "t3-librarian-intake-" }).pipe(
+            Layer.provideMerge(DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer))),
+          ),
+        ),
+      ),
+    );
+  },
+);
+
+it.effect("intake keeps the fallback when the librarian defects", () => {
+  const harness = makeHarness({ librarian: () => Effect.die("unavailable") });
+  return Effect.gen(function* () {
+    const result = yield* ThreadMessageIntake.launchThread({
+      ...launchInput({
+        command: "librarian-failure",
+        thread: "librarian-fallback",
+        message: "An errand",
+      }),
+      librarian: true,
+    });
+    assert.equal(result.projection.thread.projectId, projectId);
+    assert.equal(result.librarian?.projectId, projectId);
+  }).pipe(
+    Effect.provide(
+      Layer.mergeAll(
+        harness.layer,
+        ServerConfig.layerTest(process.cwd(), { prefix: "t3-librarian-intake-" }).pipe(
+          Layer.provideMerge(DocumentText.layer.pipe(Layer.provideMerge(NodeServices.layer))),
+        ),
+      ),
+    ),
+  );
 });

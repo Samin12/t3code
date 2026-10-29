@@ -414,7 +414,12 @@ export type BuildThreadActionItemsThread = Pick<
   Partial<
     Pick<
       SidebarThreadSummary,
-      "pullRequests" | "linkedPullRequest" | "branchPullRequest" | "opens" | "latestUserMessageAt"
+      | "pullRequests"
+      | "linkedPullRequest"
+      | "branchPullRequest"
+      | "opens"
+      | "latestUserMessageAt"
+      | "callName"
     >
   > & {
     updatedAt: string;
@@ -466,10 +471,11 @@ export function buildThreadActionItems<TThread extends BuildThreadActionItemsThr
       {
         kind: "action" as const,
         value: `thread:${thread.environmentId}:${thread.id}`,
-        searchTerms: [thread.title],
+        searchTerms: [thread.title, thread.callName ?? ""],
         threadSearch: threadSearchSubject(
           {
             ...thread,
+            title: [thread.title, thread.callName].filter(Boolean).join(" "),
             latestUserMessageAt: thread.latestUserMessageAt ?? null,
             opens: thread.opens ?? null,
           },

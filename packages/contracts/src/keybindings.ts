@@ -41,6 +41,7 @@ const THREAD_KEYBINDING_COMMANDS = [
   "thread.previous",
   "thread.next",
   "thread.copyReference",
+  "thread.handoff",
   "thread.settle",
   "thread.pin",
   "thread.undo",
@@ -125,9 +126,17 @@ export const SCRIPT_RUN_COMMAND_PATTERN = Schema.TemplateLiteral([
   Schema.Literal(".run"),
 ]);
 
+/** `project.<slug>.newThread`: a new thread in the project whose title slugs to `<slug>`. */
+export const PROJECT_NEW_THREAD_COMMAND_PATTERN = Schema.TemplateLiteral([
+  Schema.Literal("project."),
+  Schema.NonEmptyString.check(Schema.isMaxLength(40), Schema.isPattern(/^[a-z0-9][a-z0-9-]*$/)),
+  Schema.Literal(".newThread"),
+]);
+
 export const KeybindingCommand = Schema.Union([
   Schema.Literals(STATIC_KEYBINDING_COMMANDS),
   SCRIPT_RUN_COMMAND_PATTERN,
+  PROJECT_NEW_THREAD_COMMAND_PATTERN,
 ]);
 export type KeybindingCommand = typeof KeybindingCommand.Type;
 

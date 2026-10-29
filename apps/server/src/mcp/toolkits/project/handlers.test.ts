@@ -147,6 +147,17 @@ const clientLaunchHarness = (input: {
       },
     }),
     Layer.mock(Project.ProjectService)({
+      snapshot: Effect.succeed({
+        projects: [
+          {
+            id: projectId,
+            title: "Target",
+            workspaceRoot: "/projects/client-target",
+            defaultModelSelection: modelSelection,
+            deletedAt: null,
+          },
+        ],
+      } as unknown as import("@t3tools/contracts").ProjectSnapshot),
       getById: (id) =>
         Effect.succeed(
           id === projectId
@@ -691,4 +702,27 @@ it.effect("an update the project refuses tells the agent why", () =>
 
     expect(refused.at(-1)?.result).toMatchObject({ code: "invalid_request", message: detail });
   }),
+);
+
+it.effect(
+  "MCP librarian accepts no project outside a thread and passes the fallback and flag to intake",
+  () =>
+    Effect.gen(function* () {
+      const launched: Array<ThreadLaunch.ThreadLaunchInput> = [];
+      const { projectId, dependencies } = clientLaunchHarness({
+        runtimeModeCeiling: "auto",
+        launched,
+      });
+      const toolkit = yield* ProjectToolkit.pipe(
+        Effect.provide(
+          McpToolAccess.HandlersLayer.layer(ProjectHandlers.layer).pipe(
+            Layer.provide(dependencies),
+          ),
+        ),
+      );
+      yield* toolkit
+        .handle("t3_thread_launch", { title: "Fix", message: "Fix the app", librarian: true })
+        .pipe(Stream.unwrap, Stream.runCollect, Effect.provide(dependencies));
+      expect(launched[0]).toMatchObject({ projectId, librarian: true });
+    }),
 );

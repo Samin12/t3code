@@ -40,6 +40,34 @@ async function reloadRightPanelStore() {
 }
 
 describe("rightPanelStore", () => {
+  it("keeps Mac singleton tabs scoped to panel placement and restores closed tabs", async () => {
+    const store = useRightPanelStore.getState();
+    store.open(refA, "mac");
+    store.open(refA, "mac");
+    store.open(refB, "mac");
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, refA).surfaces,
+    ).toEqual([{ id: "mac", kind: "mac" }]);
+    store.closeSurface(refA, "mac");
+    expect(selectActiveRightPanelSurface(useRightPanelStore.getState().byThreadKey, refB)?.id).toBe(
+      "mac",
+    );
+    const closed = useClosedViewStore.getState().entries[0]!;
+    expect(closed).toMatchObject({ kind: "panel-tab", surface: { id: "mac", kind: "mac" } });
+    await reopenClosedView(closed, {
+      workspaceAvailable: false,
+      openPreview: () => {
+        throw new Error("Mac must not open a browser.");
+      },
+    });
+    expect(selectActiveRightPanelSurface(useRightPanelStore.getState().byThreadKey, refA)?.id).toBe(
+      "mac",
+    );
+    await reloadRightPanelStore();
+    expect(selectActiveRightPanelSurface(useRightPanelStore.getState().byThreadKey, refA)?.id).toBe(
+      "mac",
+    );
+  });
   it("opens a hosted side chat's panel actions in its parent's panel until unhosted", () => {
     const store = useRightPanelStore.getState();
     const unhost = hostRightPanel(refB, refA);

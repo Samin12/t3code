@@ -85,7 +85,7 @@ function EnvironmentCloneToasts({ environmentId }: { environmentId: EnvironmentI
   };
 
   const openProject = (projectId: ProjectId) => {
-    void handleNewThread(scopeProjectRef(environmentId, projectId));
+    void handleNewThread(scopeProjectRef(environmentId, projectId), { librarian: false });
   };
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- opens, updates and closes imperative toastManager toasts to match the current project clones

@@ -34,7 +34,9 @@ const ThreadOrganizeTool = Tool.make("t3_thread_organize", {
     "Pin, snooze, settle, archive, or mark a thread unread. Omit `threadId` for this thread. `snooze` needs `snoozedUntil`. Settling this thread applies at turn end. A failed turn or queued message leaves it active.",
   parameters: Schema.Struct({
     environmentId: OrchestratorMcpEnvironmentTarget,
-    threadId: Schema.optional(ThreadId),
+    threadId: Schema.optional(
+      ThreadId.annotate({ description: "Thread id or call name, like Mike." }),
+    ),
     action: Schema.Literals([
       "pin",
       "unpin",
@@ -93,7 +95,9 @@ const QueueTool = Tool.make("t3_queue", {
       "promote_to_steer",
     ]),
     environmentId: OrchestratorMcpEnvironmentTarget,
-    threadId: Schema.optional(ThreadId),
+    threadId: Schema.optional(
+      ThreadId.annotate({ description: "Thread id or call name, like Mike." }),
+    ),
     queuedRunId: Schema.optional(RunId),
     text: Schema.optional(Schema.String.check(Schema.isMaxLength(100000))),
     beforeRunId: Schema.optional(Schema.NullOr(RunId)),
@@ -131,7 +135,9 @@ const PendingRequestTool = Tool.make("t3_pending_request", {
   parameters: Schema.Struct({
     action: Schema.Literals(["list", "read", "respond"]),
     environmentId: OrchestratorMcpEnvironmentTarget,
-    threadId: Schema.optional(ThreadId),
+    threadId: Schema.optional(
+      ThreadId.annotate({ description: "Thread id or call name, like Mike." }),
+    ),
     requestId: Schema.optional(RuntimeRequestId),
     answers: Schema.optional(ProviderUserInputAnswers),
   }),
@@ -156,7 +162,9 @@ const ThreadConfigureTool = Tool.make("t3_thread_configure", {
     "Read a thread's provider, model, and modes, or set its provider, model, and options with `modelSelection`. Omit `threadId` for this thread. Permission modes stay. Values from `orchestrator_capabilities`.",
   parameters: Schema.Struct({
     environmentId: OrchestratorMcpEnvironmentTarget,
-    threadId: Schema.optional(ThreadId),
+    threadId: Schema.optional(
+      ThreadId.annotate({ description: "Thread id or call name, like Mike." }),
+    ),
     modelSelection: Schema.optional(ModelSelection),
   }),
   success: Schema.Union([threadConfiguration, OrchestrationV2DispatchCommandResult]),
@@ -169,9 +177,13 @@ const ThreadTransferTool = Tool.make("t3_thread_transfer", {
   parameters: Schema.Struct({
     action: Schema.Literals(["fork", "merge_back", "status"]),
     environmentId: OrchestratorMcpEnvironmentTarget,
-    threadId: Schema.optional(ThreadId),
+    threadId: Schema.optional(
+      ThreadId.annotate({ description: "Thread id or call name, like Mike." }),
+    ),
     sourcePoint: Schema.optional(OrchestrationV2ThreadForkSourcePoint),
-    targetThreadId: Schema.optional(ThreadId),
+    targetThreadId: Schema.optional(
+      ThreadId.annotate({ description: "Thread id or call name, like Mike." }),
+    ),
     title: Schema.optional(TrimmedNonEmptyString),
   }),
   success: Schema.Union([
@@ -192,7 +204,7 @@ const ThreadTransferTool = Tool.make("t3_thread_transfer", {
 const ThreadSearchTool = Tool.make("t3_thread_search", {
   ...commandTool,
   description:
-    "Search active threads by title, branch, PR, project, then message text. Skips subagent threads. `projectId`: one project, else yours, else all outside a thread. Not exhaustive.",
+    "Search threads by call name, title, branch, PR, project, then message text. Exact call names rank first and include subagents. `projectId`: one project, else yours, else all outside a thread. Not exhaustive.",
   parameters: Schema.Struct({
     environmentId: OrchestratorMcpEnvironmentTarget,
     ...OrchestrationSearchThreadsInput.fields,
@@ -202,6 +214,7 @@ const ThreadSearchTool = Tool.make("t3_thread_search", {
     matches: Schema.Array(
       Schema.Struct({
         threadId: OrchestrationThreadSearchMatch.fields.threadId,
+        callName: OrchestrationThreadSearchMatch.fields.callName,
         projectId: OrchestrationThreadSearchMatch.fields.projectId,
         title: Schema.String,
         link: Schema.optional(Schema.String),

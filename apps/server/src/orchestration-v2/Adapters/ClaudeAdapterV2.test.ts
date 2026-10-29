@@ -88,6 +88,7 @@ import * as McpProviderSession from "@t3tools/provider-core/server/mcpSession";
 import { T3_CODE_DEVICE_TOOL_INSTRUCTIONS_WITH_TOOL_SEARCH } from "@t3tools/provider-core/server/orchestrationInstructions";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import { PreviewControlsToolkit } from "../../mcp/toolkits/previewControls/tools.ts";
+import { DecisionsToolkit } from "../../mcp/toolkits/decisions/tools.ts";
 import { HtmlToolkit } from "../../mcp/toolkits/html/tools.ts";
 import { EnvironmentToolkit } from "../../mcp/toolkits/environment/tools.ts";
 import { ProjectToolkit } from "../../mcp/toolkits/project/tools.ts";
@@ -605,6 +606,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
       ...Object.values(EnvironmentToolkit.tools),
       ...Object.values(PreviewControlsToolkit.tools),
       ...Object.values(HtmlToolkit.tools),
+      ...Object.values(DecisionsToolkit.tools),
     ]
       .filter((tool) => Context.get(tool.annotations, Tool.Readonly))
       .map((tool) => `mcp__t3-code__${tool.name}`)
@@ -670,6 +672,8 @@ describe("ClaudeAdapterV2 native protocol logging", () => {
     assert.equal(systemPrompt.type, "preset");
     assert.equal(systemPrompt.preset, "claude_code");
     assert.include(systemPrompt.append ?? "", "Use `delegate_task`");
+    assert.include(systemPrompt.append ?? "", "### Decisions");
+    assert.include(systemPrompt.append ?? "", "call `end_turn` just before you write your reply");
     assert.include(systemPrompt.append ?? "", "call `t3_background_wait`");
     assert.notInclude(systemPrompt.append ?? "", "## T3 Code devices");
     const logged = ClaudeAdapterV2.loggedClaudeQueryOptions(options);

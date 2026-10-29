@@ -45,7 +45,7 @@ const shells = new Map([
     planThreadId,
     liveThreadShell(planThreadId, { runtimeMode: "approval-required", interactionMode: "plan" }),
   ],
-  [fullAccessThreadId, liveThreadShell(fullAccessThreadId)],
+  [fullAccessThreadId, { ...liveThreadShell(fullAccessThreadId), callName: "Mike" }],
   [endedThreadId, liveThreadShell(endedThreadId, { activeRunId: null })],
   [backgroundThreadId, backgroundShell(backgroundThreadId, ProviderInstanceId.make("codex"))],
   [oldProviderThreadId, backgroundShell(oldProviderThreadId, ProviderInstanceId.make("claude"))],
@@ -250,6 +250,8 @@ it.effect.each([
 
   ["writes", readOnlyClient, {}, "capability_denied"],
   ["writes_threads", readOnlyClient, { threadId: supervisedThreadId }, "capability_denied"],
+  ["writes_threads", supervised, { threadId: "mIkE" }, "runtime_mode_escalation_denied"],
+  ["writes_threads", fullAccessClient, { threadId: "Mike" }, "ran"],
   ["starts_threads", readOnlyClient, {}, "capability_denied"],
   ["writes_environment", readOnlyClient, {}, "capability_denied"],
 
@@ -298,7 +300,7 @@ it.effect.each([
     { threadId: fullAccessThreadId },
     "runtime_mode_escalation_denied",
   ],
-  ["writes_threads", supervised, { threadId: "thread:missing" }, "ran"],
+  ["writes_threads", supervised, { threadId: "thread:missing" }, "thread_not_found"],
 
   ["starts_threads", supervised, {}, "approval-required/default"],
   ["starts_threads", supervised, { runtimeMode: "full-access" }, "runtime_mode_escalation_denied"],
@@ -322,6 +324,13 @@ it.effect.each([
       probeServer(
         Layer.mock(ThreadManagement.ThreadManagementService)({
           getThreadShell: (threadId) => Effect.succeed(shells.get(threadId) ?? null),
+          getShellSnapshot: () =>
+            Effect.succeed({
+              schemaVersion: 2,
+              snapshotSequence: 0,
+              threads: [...shells.values()],
+              archivedThreads: [],
+            }),
         }),
       ),
     ),
@@ -396,6 +405,13 @@ const linkedProbeServer = McpHttpServer.toolkitRegistration(
   Layer.provideMerge(
     Layer.mock(ThreadManagement.ThreadManagementService)({
       getThreadShell: (threadId) => Effect.succeed(shells.get(threadId) ?? null),
+      getShellSnapshot: () =>
+        Effect.succeed({
+          schemaVersion: 2,
+          snapshotSequence: 0,
+          threads: [...shells.values()],
+          archivedThreads: [],
+        }),
     }),
   ),
   // Stands in for the linked environment, answering with where the call went.

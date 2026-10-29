@@ -8,6 +8,7 @@ import { createModelSelection } from "@t3tools/shared/model";
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import { useNavigate } from "@tanstack/react-router";
 
+import { LibrarianSettings } from "./LibrarianSettings";
 import { useClientSettings } from "../../hooks/useSettings";
 import {
   defaultModelSelectionsAreMixed,
@@ -335,6 +336,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
         </>
       ) : category === "general" ? (
         <>
+          <LibrarianSettings />
           {modelRow}
           {fallbackRow}
           <SettingsRow

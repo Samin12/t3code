@@ -29,47 +29,60 @@ function project(id: string): Project {
 
 describe("new thread commands", () => {
   it.each([
-    { mode: "normal", count: 2, command: "chat.new", picker: true },
-    { mode: "boring", count: 2, command: "chat.new", picker: true },
-    { mode: "boring", count: 1, command: "chat.new", picker: false },
-    { mode: "boring", count: 2, command: "chat.newLocal", picker: false },
-  ] as const)("$mode sidebar, $count projects, $command: picker=$picker", (scenario) => {
-    using _settings = vi.spyOn(settings, "getClientSettings").mockReturnValue({
-      ...DEFAULT_CLIENT_SETTINGS,
-      boringSidebarEnabled: scenario.mode === "boring",
-    });
-    using _projects = vi
-      .spyOn(entities, "readProjects")
-      .mockReturnValue([project("active"), project("idle")].slice(0, scenario.count));
-    using _ready = vi
-      .spyOn(projectsState, "defaultProjectFallbackReadyAtom")
-      .mockReturnValue(Atom.make(true));
-    using storedProject = vi.spyOn(storage, "getLocalStorageItem").mockReturnValue("local:active");
-    using openPicker = vi.spyOn(commandPalette, "openCommandPalette").mockImplementation(() => {});
-    using startLocal = vi.spyOn(threadActions, "startNewThreadFromContext").mockResolvedValue(true);
-    using register = vi.spyOn(dispatcher, "registerCommands").mockReturnValue(() => {});
-    const router = { state: { matches: [] } } as unknown as AnyRouter;
-    using stack = new DisposableStack();
-    stack.defer(installChatRouteCommands(router));
-    const commands = register.mock.calls[0]![0];
-    const event = {
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as KeyboardEvent;
-
-    storedProject.mockReturnValue("local:idle");
-    commands[scenario.command]!(event);
-
-    if (scenario.picker) {
-      expect(openPicker).toHaveBeenCalledWith({ open: "new-thread-in" });
-      expect(startLocal).not.toHaveBeenCalled();
-    } else {
-      expect(openPicker).not.toHaveBeenCalled();
-      expect(startLocal).toHaveBeenCalledOnce();
-      expect(startLocal.mock.calls[0]![0].defaultProjectRef).toEqual({
-        environmentId: "local",
-        projectId: scenario.count === 1 ? "active" : "idle",
+    { mode: "normal", count: 2, command: "chat.new", librarian: false, picker: true },
+    { mode: "boring", count: 2, command: "chat.new", librarian: false, picker: true },
+    { mode: "boring", count: 1, command: "chat.new", librarian: false, picker: false },
+    { mode: "boring", count: 2, command: "chat.newLocal", librarian: false, picker: false },
+    // The librarian picks the project on send, so there's nothing to pick first.
+    { mode: "normal", count: 2, command: "chat.new", librarian: true, picker: false },
+    { mode: "boring", count: 2, command: "chat.new", librarian: true, picker: false },
+  ] as const)(
+    "$mode sidebar, $count projects, $command, librarian=$librarian: picker=$picker",
+    (scenario) => {
+      using _settings = vi.spyOn(settings, "getClientSettings").mockReturnValue({
+        ...DEFAULT_CLIENT_SETTINGS,
+        boringSidebarEnabled: scenario.mode === "boring",
+        newThreadsUseLibrarian: scenario.librarian,
       });
-    }
-  });
+      using _projects = vi
+        .spyOn(entities, "readProjects")
+        .mockReturnValue([project("active"), project("idle")].slice(0, scenario.count));
+      using _ready = vi
+        .spyOn(projectsState, "defaultProjectFallbackReadyAtom")
+        .mockReturnValue(Atom.make(true));
+      using storedProject = vi
+        .spyOn(storage, "getLocalStorageItem")
+        .mockReturnValue("local:active");
+      using openPicker = vi
+        .spyOn(commandPalette, "openCommandPalette")
+        .mockImplementation(() => {});
+      using startLocal = vi
+        .spyOn(threadActions, "startNewThreadFromContext")
+        .mockResolvedValue(true);
+      using register = vi.spyOn(dispatcher, "registerCommands").mockReturnValue(() => {});
+      const router = { state: { matches: [] } } as unknown as AnyRouter;
+      using stack = new DisposableStack();
+      stack.defer(installChatRouteCommands(router));
+      const commands = register.mock.calls[0]![0];
+      const event = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as KeyboardEvent;
+
+      storedProject.mockReturnValue("local:idle");
+      commands[scenario.command]!(event);
+
+      if (scenario.picker) {
+        expect(openPicker).toHaveBeenCalledWith({ open: "new-thread-in" });
+        expect(startLocal).not.toHaveBeenCalled();
+      } else {
+        expect(openPicker).not.toHaveBeenCalled();
+        expect(startLocal).toHaveBeenCalledOnce();
+        expect(startLocal.mock.calls[0]![0].defaultProjectRef).toEqual({
+          environmentId: "local",
+          projectId: scenario.count === 1 ? "active" : "idle",
+        });
+      }
+    },
+  );
 });

@@ -1030,6 +1030,19 @@ export const SystemSettingsPaneSchema = Schema.Literals(["full-disk-access"]);
 export type SystemSettingsPane = typeof SystemSettingsPaneSchema.Type;
 
 export interface DesktopBridge {
+  terminalMac?: {
+    request: (
+      input: import("./terminalMac.ts").TerminalMacRequest,
+    ) => Promise<import("./terminalMac.ts").TerminalMacResponse>;
+    subscribe: (
+      listener: (event: import("./terminalMac.ts").TerminalMacEvent) => void,
+    ) => () => void;
+  };
+  heptabase?: {
+    request: (
+      input: import("./heptabase.ts").HeptabaseRequest,
+    ) => Promise<import("./heptabase.ts").HeptabaseResponse>;
+  };
   getAppBranding: () => DesktopAppBranding | null;
   getRelayTelemetryEnabled: () => boolean;
   getPathForFile: (file: File) => string;

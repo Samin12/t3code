@@ -11,10 +11,12 @@ import {
   AnthropicIcon,
   AntigravityIcon,
   ClaudeAI,
+  HermesIcon,
   Icon,
   OllamaIcon,
   OpenAI,
   OpenRouterIcon,
+  VoyagerIcon,
 } from "../Icons";
 
 import { cn } from "~/lib/utils";
@@ -36,6 +38,26 @@ const PROVIDER_ICON_BY_PROVIDER: Partial<Record<ProviderDriverKind, Icon>> = {
   [ProviderDriverKind.make("openrouter")]: OpenRouterIcon,
   [ProviderDriverKind.make("ollama")]: OllamaIcon,
 };
+
+const CUSTOM_INSTANCE_ICONS = {
+  hermes: HermesIcon,
+  voyager: VoyagerIcon,
+} satisfies Record<string, Icon>;
+
+/**
+ * Instance-specific icons, matched by driver and display name: a Grok instance named
+ * "Hermes", and Claude instances whose name starts with "Voyager" (for example
+ * "Voyager · Claude 100").
+ */
+export function customProviderInstanceIconKey(
+  driverKind: ProviderDriverKind,
+  displayName: string,
+): keyof typeof CUSTOM_INSTANCE_ICONS | null {
+  const name = displayName.trim().toLowerCase();
+  if (driverKind === "grok" && name === "hermes") return "hermes";
+  if (driverKind === "claudeAgent" && name.startsWith("voyager")) return "voyager";
+  return null;
+}
 
 const PROVIDER_TEXT_COLOR_BY_PROVIDER: Partial<Record<ProviderDriverKind, string>> = {
   [ProviderDriverKind.make("codex")]: "text-black dark:text-white",
@@ -100,8 +122,11 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
   badgeClassName?: string;
   indicatorBackground?: string;
 }) {
-  const Icon = PROVIDER_ICON_BY_PROVIDER[props.driverKind] ?? null;
-  const packageIcon = providerClients.get(props.driverKind)?.icon;
+  const customIconKey = customProviderInstanceIconKey(props.driverKind, props.displayName);
+  const Icon = customIconKey
+    ? CUSTOM_INSTANCE_ICONS[customIconKey]
+    : (PROVIDER_ICON_BY_PROVIDER[props.driverKind] ?? null);
+  const packageIcon = customIconKey ? null : providerClients.get(props.driverKind)?.icon;
   const indicatorBackground = props.indicatorBackground ?? "var(--card)";
   const accentColor = normalizeProviderAccentColor(props.accentColor);
   const accentStyle = accentColor

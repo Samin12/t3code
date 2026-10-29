@@ -1,3 +1,4 @@
+import { makeThreadCallNames } from "./ThreadCallNames.ts";
 import type { ProjectThreadAwarenessV2Input } from "@t3tools/shared/agentAwareness";
 import { pendingGuestMessageCount } from "@t3tools/contracts";
 import { applyThreadPullRequestLinkUpdate } from "../sourceControl/threadPullRequests.ts";
@@ -1902,6 +1903,7 @@ function shellFromState(input: {
     id: input.state.thread.id,
     projectId: input.state.thread.projectId,
     title: input.state.thread.title,
+    ...(input.state.thread.callName === undefined ? {} : { callName: input.state.thread.callName }),
     providerInstanceId: input.state.thread.providerInstanceId,
     modelSelection: input.state.thread.modelSelection,
     runtimeMode: input.state.thread.runtimeMode,
@@ -1980,9 +1982,19 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
   ProjectionStoreV2,
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
+    const callNames = makeThreadCallNames(sql);
+    const ensureCallNames = yield* Effect.cached(
+      callNames
+        .backfill()
+        .pipe(
+          Effect.catch((cause) =>
+            Effect.logWarning("Unable to backfill thread call names", { cause }),
+          ),
+        ),
+    );
 
     const inlineWorkOutput = sql`item.type = 'dynamic_tool' AND (
-      item.payload_json LIKE '%htmlRender%' OR item.payload_json LIKE ${`%${MCP_APP_OUTPUT_KEY}%`}
+      item.payload_json LIKE '%htmlRender%' OR item.payload_json LIKE '%end_turn%' OR item.payload_json LIKE ${`%${MCP_APP_OUTPUT_KEY}%`}
       OR item.payload_json LIKE '%"viewedImagePath"%'
       OR item.payload_json LIKE '%"toolName":"%delegate_task"%')`;
 
@@ -2046,7 +2058,8 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
             case "thread.model-selection-updated":
             case "thread.provider-switched":
             case "thread.guest-share-updated": {
-              const payloadJson = yield* encodeThreadPayload(event.payload);
+              const callName = yield* callNames.assign(event.payload.id);
+              const payloadJson = yield* encodeThreadPayload({ ...event.payload, callName });
               const payload = parseEncodedPayload(payloadJson);
               yield* sql`
               INSERT INTO orchestration_v2_projection_threads (
@@ -5646,7 +5659,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
       FROM orchestration_v2_projection_turn_items
       WHERE thread_id = ${threadId}
         AND type = 'dynamic_tool'
-        AND (payload_json LIKE '%htmlRender%' OR payload_json LIKE ${`%${MCP_APP_OUTPUT_KEY}%`}
+        AND (payload_json LIKE '%htmlRender%' OR payload_json LIKE '%end_turn%' OR payload_json LIKE ${`%${MCP_APP_OUTPUT_KEY}%`}
           OR payload_json LIKE '%preview_recording_stop%')
     `,
         sql<{ id: string }>`
@@ -7554,7 +7567,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
         method: (...args: Args) => Effect.Effect<A, E, R>,
       ) =>
       (...args: Args): Effect.Effect<A, E, R> =>
-        method(...args).pipe(NodeSqliteClient.readOnly);
+        ensureCallNames.pipe(Effect.andThen(method(...args).pipe(NodeSqliteClient.readOnly)));
 
     return {
       apply,
@@ -7598,7 +7611,11 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
       getTurnItem: readOnReader(getTurnItem),
       getMessagesById: readOnReader(getMessagesById),
       getThreadRecords: (threadId, fields, filter) =>
-        getThreadRecords(threadId, fields, filter).pipe(NodeSqliteClient.readOnly),
+        ensureCallNames.pipe(
+          Effect.andThen(
+            getThreadRecords(threadId, fields, filter).pipe(NodeSqliteClient.readOnly),
+          ),
+        ),
       getRuntimeRequest: readOnReader(getRuntimeRequest),
       getPlan: readOnReader(getPlan),
       getProviderControlContext: readOnReader(getProviderControlContext),

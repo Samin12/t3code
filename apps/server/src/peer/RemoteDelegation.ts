@@ -291,6 +291,7 @@ const make = Effect.gen(function* () {
       const remoteChild: OrchestrationV2RemoteTaskChild = {
         environmentId: target.environmentId,
         threadId: launched.threadId,
+        ...(launched.callName === undefined ? {} : { callName: launched.callName }),
         label: link?.label ?? target.environmentId,
         title,
         ...(launched.runId === null ? {} : { runId: launched.runId }),

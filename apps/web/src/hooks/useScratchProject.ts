@@ -81,7 +81,7 @@ export function createScratchProjectActions(input: {
     const project = await openScratchProject(environmentId);
     if (project) {
       await input
-        .handleNewThread(scopeProjectRef(project.environmentId, project.id))
+        .handleNewThread(scopeProjectRef(project.environmentId, project.id), { librarian: false })
         .catch((error: unknown) =>
           reportScratchFailure("Could not start without a project", error),
         );

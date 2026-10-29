@@ -249,7 +249,7 @@ vi.mock("../uiStateStore", () => ({
   legacyProjectCwdPreferenceKey: () => "remote-project",
   useUiStateStore: () => [],
 }));
-vi.mock("./useSettings", () => ({ getClientSettings: () => ({}) }));
+vi.mock("./useSettings", () => ({ getClientSettings: () => ({ newThreadsUseLibrarian: true }) }));
 
 import { resolveDefaultProjectRef, useNewThreadHandler } from "./useHandleNewThread";
 
@@ -296,6 +296,9 @@ describe.each([
       opened?.draftId,
       "Read the playbook. ",
     );
+    expect(testState.draftStore.setDraftThreadContext).toHaveBeenCalledWith(opened?.draftId, {
+      librarian: true,
+    });
     expect(testState.draftStore.setPrompt.mock.invocationCallOrder[0]).toBeLessThan(
       testState.router.navigate.mock.invocationCallOrder[0] ?? 0,
     );

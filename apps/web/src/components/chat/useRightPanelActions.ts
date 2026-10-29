@@ -147,6 +147,14 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
     useRightPanelStore.getState().open(activeThreadRef, "files");
   };
   const addFilesSurfaceStable = useStableCallback(addFilesSurface);
+  const addMacSurfaceStable = useStableCallback(() => {
+    if (activeThreadRef && window.desktopBridge?.terminalMac)
+      useRightPanelStore.getState().open(activeThreadRef, "mac");
+  });
+  const addHeptabaseSurface = () => {
+    if (activeThreadRef) useRightPanelStore.getState().open(activeThreadRef, "heptabase");
+  };
+  const addHeptabaseSurfaceStable = useStableCallback(addHeptabaseSurface);
   const addPullRequestsSurface = () => {
     if (!activeThreadRef || !pullRequestsSurfaceAvailable) return;
     useRightPanelStore.getState().open(activeThreadRef, "pull-requests");
@@ -346,6 +354,8 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
     addDeviceSurfaceStable,
     addDiffSurfaceStable,
     addFilesSurfaceStable,
+    addHeptabaseSurfaceStable,
+    addMacSurfaceStable,
     addPullRequestSurfaceStable,
     addPullRequestsSurfaceStable,
     closePreviewPanelStable,

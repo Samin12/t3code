@@ -122,7 +122,7 @@ export function useNewProject() {
       return null;
     });
     if (project === null) return true;
-    await handleNewThread(projectRef).catch((error: unknown) => {
+    await handleNewThread(projectRef, { librarian: false }).catch((error: unknown) => {
       toastManager.add(
         stackedThreadToast({
           type: "error",

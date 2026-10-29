@@ -220,6 +220,7 @@ describe("V2 environment commands", () => {
 
       yield* startThreadTurn({
         commandId: CommandId.make("launch-existing-worktree"),
+        librarian: true,
         threadId: v2ThreadId,
         message: {
           messageId: MessageId.make("message-existing-worktree"),
@@ -246,6 +247,7 @@ describe("V2 environment commands", () => {
 
       expect(launches[0]).toMatchObject({
         threadId: v2ThreadId,
+        librarian: true,
         title: "Continue here",
         generateTitle: true,
         workspaceStrategy: {

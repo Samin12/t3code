@@ -1,3 +1,5 @@
+import * as TerminalMacIpc from "./methods/terminalMac.ts";
+import * as HeptabaseIpc from "./methods/heptabase.ts";
 import * as Effect from "effect/Effect";
 
 import { receiveProviderAuthCallback, cancelProviderAuthCallback } from "./methods/providerAuth.ts";
@@ -87,6 +89,10 @@ import {
 export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers")(function* () {
   const ipc = yield* DesktopIpc.DesktopIpc;
   yield* installNotificationBadge();
+  yield* ipc.handle(HeptabaseIpc.request);
+  yield* ipc.handle(TerminalMacIpc.request);
+  yield* ipc.handle(TerminalMacIpc.subscription);
+  yield* TerminalMacIpc.installEventForwarding();
   yield* PreviewIpc.installPreviewEventForwarding();
 
   yield* ipc.handle(AppActivationIpc.setReady);

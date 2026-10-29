@@ -10,6 +10,7 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
+import * as Schema from "effect/Schema";
 import * as TestConsole from "effect/testing/TestConsole";
 import { Command } from "effect/cli";
 import { vi } from "vite-plus/test";
@@ -42,6 +43,10 @@ vi.mock("../auth/EnvironmentAuth.ts", async (importOriginal) => {
     }),
   };
 });
+
+const decodeLibrarianOutput = Schema.decodeUnknownEffect(
+  Schema.fromJsonString(Schema.Struct({ librarian: Schema.Unknown })),
+);
 
 const threadId = ThreadId.make("thread-1");
 const runId = RunId.make("run-1");
@@ -84,7 +89,21 @@ it.effect(
                 return Effect.succeed({ structuredContent: { projects, nextCursor: null } });
               case "t3_thread_launch":
                 return Effect.succeed({
-                  structuredContent: { threadId, projectId: args.projectId, runId: null },
+                  structuredContent: {
+                    threadId,
+                    projectId: args.projectId ?? projects[0]!.id,
+                    runId: null,
+                    ...(args.librarian
+                      ? {
+                          librarian: {
+                            projectId: projects[0]!.id,
+                            projectTitle: "Current",
+                            reason: "A quick errand",
+                            createdProject: false,
+                          },
+                        }
+                      : {}),
+                  },
                 });
               default:
                 return Effect.die(`unexpected ${tool} call`);
@@ -120,6 +139,23 @@ it.effect(
           JSON.stringify({ threadId, projectId: expectedProjectId, runId: null }),
           identifier,
         );
+      }
+      for (const positional of [["An errand"], ["current-project", "An errand"]]) {
+        yield* Command.runWith(threadCommand, { version: "0.0.0" })([
+          "start",
+          ...positional,
+          "--librarian",
+          "--json",
+          "--base-dir",
+          baseDir,
+        ]);
+        const output = yield* decodeLibrarianOutput((yield* TestConsole.logLines).at(-1));
+        assert.deepEqual(output.librarian, {
+          projectId: "current-project",
+          projectTitle: "Current",
+          reason: "A quick errand",
+          createdProject: false,
+        });
       }
     }).pipe(
       Effect.scoped,

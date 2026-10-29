@@ -880,13 +880,20 @@ describe("composerDraftStore project draft thread mapping", () => {
 
   it("removes a draft's previous project mapping when retargeted in place", () => {
     const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectRef, draftId, { threadId });
+    store.setProjectDraftThreadId(projectRef, draftId, { threadId, librarian: true });
+    expect(store.getDraftSession(draftId)?.librarian).toBe(true);
     store.setPrompt(draftId, "keep this prompt");
+    store.setDraftThreadContext(draftId, {
+      projectRef: otherProjectRef,
+      environmentSelection: "manual",
+    });
+    expect(store.getDraftSession(draftId)?.librarian).toBe(true);
 
-    store.setProjectDraftThreadId(otherProjectRef, draftId, { threadId });
+    store.setProjectDraftThreadId(otherProjectRef, draftId, { threadId, librarian: false });
 
     expect(store.getDraftThreadByProjectRef(projectRef)).toBeNull();
     expect(store.getDraftThreadByProjectRef(otherProjectRef)?.draftId).toBe(draftId);
+    expect(store.getDraftSession(draftId)?.librarian).toBe(false);
     expect(store.getComposerDraft(draftId)?.prompt).toBe("keep this prompt");
   });
 

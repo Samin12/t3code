@@ -364,6 +364,7 @@ describe("orchestrator MCP toolkit", () => {
             delegatedCall.structuredContent,
           ).pipe(Effect.orDie);
           expect(delegatedStart.childRunId).not.toBeNull();
+          expect(delegatedStart.callName).toEqual(expect.any(String));
           yield* orchestrator
             .streamStoredEventsFrom({
               threadId: parentThreadId,
@@ -407,6 +408,8 @@ describe("orchestrator MCP toolkit", () => {
             localChild(delegated.childThreadId),
           );
           expect(delegatedChild.thread.lineage.relationshipToParent).toBe("subagent");
+          expect(delegated.callName).toBe(delegatedStart.callName);
+          expect(delegatedChild.thread.callName).toBe(delegatedStart.callName);
           expect(isProviderNativeSubagentThread(delegatedChild.thread)).toBe(false);
           const followupStartSequence = yield* orchestrator.getThreadEventSequence(
             localChild(delegated.childThreadId),
@@ -669,12 +672,13 @@ describe("orchestrator MCP toolkit", () => {
           });
           const wait = yield* invoke(
             "t3_thread_wait",
-            { threadId: delegated.childThreadId, runId: queuedFollowup.runId },
+            { threadId: delegatedStart.callName, runId: queuedFollowup.runId },
             { ...invocation, thread: undefined },
           ).pipe(Effect.withTracer(tracer));
           expect(wait.isError).not.toBe(true);
           const expectedWait = {
             threadId: delegated.childThreadId,
+            callName: delegatedStart.callName,
             runId: queuedFollowup.runId,
             status: "completed",
             timedOut: false,

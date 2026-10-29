@@ -1446,15 +1446,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
               {/* Left of the status slot, the pin would slide when hover swaps the
                 label for the wider row controls. */}
               {pinIndicator}
-              {props.projectDisplayName ? (
-                <span
-                  className={cn("min-w-0 flex-1 truncate font-normal text-secondary-label text-xs")}
-                >
-                  {props.projectDisplayName}
-                </span>
-              ) : (
-                <span className="flex-1" />
-              )}
+              <span className="flex min-w-0 flex-1 items-center gap-1 font-normal text-secondary-label text-xs">
+                {props.projectDisplayName ? (
+                  <span className="truncate">{props.projectDisplayName}</span>
+                ) : null}
+                {thread.callName ? (
+                  <span className="shrink-0 opacity-75">· {thread.callName}</span>
+                ) : null}
+              </span>
               {sortable?.isDragging ? (
                 dragDestination
               ) : (

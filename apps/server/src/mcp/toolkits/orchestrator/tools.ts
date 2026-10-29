@@ -124,7 +124,7 @@ const TaskCancelTool = Tool.make("task_cancel", {
 
 const WorkflowStopTool = Tool.make("t3_workflow_stop", {
   description:
-    "Stop a running Claude workflow in a thread. `subagentId`: coordinator from `t3_thread_read` 'activity'. Stops only the workflow, not the thread.",
+    "Stop a running Claude workflow in a thread. `threadId`: id or call name, like Mike. `subagentId`: coordinator from `t3_thread_read` 'activity'. Stops only the workflow, not the thread.",
   parameters: Schema.Struct({
     environmentId: OrchestratorMcpEnvironmentTarget,
     ...OrchestrationV2StopWorkflowInput.fields,
@@ -238,7 +238,7 @@ const ThreadListTool = Tool.make("t3_thread_list", {
 
 const ThreadReadTool = Tool.make("t3_thread_read", {
   description:
-    "Read any thread by id. `messages` (default): user and assistant messages and plans. `activity`: all timeline items. Keep reads small: low `limit` and `maxCharsPerItem`. Page with `afterPosition=nextPosition`. Cut-off text: `itemId` with `textOffset=nextTextOffset`. Reading a child's final result marks it delivered. In your reply, name it as its `link` verbatim.",
+    "Read any thread by id or call name, like Mike. `messages` (default): user and assistant messages and plans. `activity`: all timeline items. Keep reads small: low `limit` and `maxCharsPerItem`. Page with `afterPosition=nextPosition`. Cut-off text: `itemId` with `textOffset=nextTextOffset`. Reading a child's final result marks it delivered. In your reply, name it as its `link` verbatim.",
   parameters: OrchestratorMcpThreadReadInput,
   success: OrchestratorMcpThreadReadResult,
   failure: OrchestratorMcpFailure,
@@ -253,7 +253,7 @@ const ThreadReadTool = Tool.make("t3_thread_read", {
 
 const ThreadUpdateTool = Tool.make("t3_thread_update", {
   description:
-    "Rename a thread (`action:'rename'` with `title`) or regenerate its title. Omit `threadId` for this thread. Workspace and branch cannot change here.",
+    "Rename a thread (`action:'rename'` with `title`) or regenerate its title. `threadId`: id or call name, like Mike. Omit for this thread. Workspace and branch cannot change here.",
   // Keeps the input's action/field check, which rebuilding the struct would drop.
   parameters: ThreadMetadataMcpUpdateInput.mapFields(
     Struct.assign({ environmentId: OrchestratorMcpEnvironmentTarget }),
@@ -270,7 +270,7 @@ const ThreadUpdateTool = Tool.make("t3_thread_update", {
 
 const ThreadSendTool = Tool.make("t3_thread_send", {
   description:
-    "Send a message to any thread. The target cannot run with broader modes than yours. `mode:'auto'` starts an idle thread, steers a running turn, or queues. `queue`: new turn. `steer`: mid-turn update. `restart`: interrupt and restart. A send to a finished child thread starts a fresh task and returns its `taskId`. In your reply, name it as its `link` verbatim.",
+    "Send a message to any thread. `threadId`: id or call name, like Mike. The target cannot run with broader modes than yours. `mode:'auto'` starts an idle thread, steers a running turn, or queues. `queue`: new turn. `steer`: mid-turn update. `restart`: interrupt and restart. A send to a finished child thread starts a fresh task and returns its `taskId`. In your reply, name it as its `link` verbatim.",
   parameters: OrchestratorMcpThreadSendInput,
   success: OrchestratorMcpThreadSendResult,
   failure: OrchestratorMcpFailure,
@@ -283,7 +283,7 @@ const ThreadSendTool = Tool.make("t3_thread_send", {
 
 const ThreadWaitTool = Tool.make("t3_thread_wait", {
   description:
-    "Wait for a thread's run to finish. No `runId`: latest. Idle: at once. On timeout, with `next` end your turn; without, call again.",
+    "Wait for a thread's run to finish. `threadId`: id or call name, like Mike. No `runId`: latest. Idle: at once. On timeout, with `next` end your turn; without, call again.",
   parameters: OrchestratorMcpThreadWaitInput,
   success: OrchestratorMcpThreadWaitResult,
   failure: OrchestratorMcpFailure,
@@ -297,7 +297,7 @@ const ThreadWaitTool = Tool.make("t3_thread_wait", {
 
 const ThreadInterruptTool = Tool.make("t3_thread_interrupt", {
   description:
-    "Interrupt a top-level thread's running turn. No `runId`: newest running turn. No effect when idle. For a delegate, use `task_cancel`.",
+    "Interrupt a top-level thread's running turn. `threadId`: id or call name, like Mike. No `runId`: newest running turn. No effect when idle. For a delegate, use `task_cancel`.",
   parameters: OrchestratorMcpThreadInterruptInput,
   success: OrchestratorMcpThreadInterruptResult,
   failure: OrchestratorMcpFailure,

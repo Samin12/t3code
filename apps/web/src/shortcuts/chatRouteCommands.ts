@@ -16,7 +16,10 @@ import {
 import { createScratchProjectActions } from "../hooks/useScratchProject";
 import { getClientSettings } from "../hooks/useSettings";
 import { startNewThreadFromContext } from "../lib/chatThreadActions";
+import { findProjectForSlug, projectSlugFromNewThreadCommand } from "../projectNewThreadCommand";
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
 import { selectProjectGroupingSettings } from "@t3tools/client-runtime/state/project-grouping";
+import { requestProviderHandoff } from "../providerHandoffBus";
 import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { buildSidebarProjectSnapshots } from "../sidebarProjectGrouping";
@@ -130,9 +133,18 @@ export function installChatRouteCommands(router: AnyRouter): () => void {
         claim(event);
         void scratch.startScratchThread(environmentId);
       },
+      "thread.handoff": (event) => {
+        const threadRef = readRouteThreadRef();
+        if (!threadRef) return;
+        claim(event);
+        requestProviderHandoff({ threadRef });
+      },
       "chat.new": (event) => {
+        const { newThreadsUseLibrarian } = getClientSettings();
         const groups = readProjectGroups();
+        // The librarian picks the project on send, so there's no "new thread in…" picker.
         if (
+          !newThreadsUseLibrarian &&
           !shouldCreateNewThreadInCurrentProject(
             false,
             groups.filter((group) => !group.archived).length,
@@ -184,6 +196,18 @@ export function installChatRouteCommands(router: AnyRouter): () => void {
               ).terminalOpen
             : false,
           previewOpen: readPreviewOpen(),
+        };
+      },
+      resolveCommand: (command) => {
+        const slug = projectSlugFromNewThreadCommand(command);
+        if (slug === null) return undefined;
+        return (event) => {
+          const project = findProjectForSlug(readProjects(), slug);
+          if (!project) return false;
+          claim(event);
+          // A home-project shortcut (Samin's mod+shift+n for SaminOS) opens a librarian draft
+          // with that project as its fallback, while new threads use the librarian.
+          void handleNewThread(scopeProjectRef(project.environmentId, project.id));
         };
       },
       onKeyDown: (event) => {

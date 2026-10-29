@@ -4921,6 +4921,8 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
         { toolName: "mcp__t3-code__send_to_user" },
         // OpenCode Code Mode reports a nested send_to_user call as one `execute` item.
         { toolName: "execute", output: JSON.stringify({ sentMessage: "Draft" }) },
+        { toolName: "t3-code.end_turn" },
+        { toolName: "mcp__t3-code__end_turn" },
       ]) {
         yield* writeSecondItem({
           ...secondItem,

@@ -27,6 +27,7 @@ export const OrchestrationSearchThreadsInput = Schema.Struct({
 export type OrchestrationSearchThreadsInput = typeof OrchestrationSearchThreadsInput.Type;
 
 export const OrchestrationThreadSearchMatch = Schema.Struct({
+  callName: Schema.optionalKey(Schema.String),
   threadId: ThreadId,
   projectId: ProjectId,
   source: OrchestrationThreadSearchSource,

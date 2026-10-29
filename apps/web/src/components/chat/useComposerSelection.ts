@@ -19,6 +19,8 @@ import { type SetStateAction } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toastManager } from "../ui/toast";
 import { resolveAppModelSelectionForInstance } from "../../modelSelection";
+import { providerSwitchNeedsHandoff } from "./providerHandoff";
+import { requestProviderHandoff } from "../../providerHandoffBus";
 import {
   draftModelSelectionApplies,
   resolveNewDraftStartFromOrigin,
@@ -141,31 +143,29 @@ export function useComposerSelection(input: ComposerSelectionInput) {
     cancelHeldComposerSend(composerTargetKey(composerDraftTarget));
     const entry = providerStatuses.find((snapshot) => snapshot.instanceId === instanceId);
     const resolvedDriverKind = entry?.driver ?? null;
+    const currentEntry = providerStatuses.find(
+      (snapshot) =>
+        snapshot.instanceId ===
+        (activeRuntime?.providerInstanceId ?? activeThread.modelSelection.instanceId),
+    );
     if (
       !supportsProviderSwitchingViaHandoff &&
-      lockedProvider !== null &&
-      resolvedDriverKind !== null &&
-      resolvedDriverKind !== lockedProvider
+      providerSwitchNeedsHandoff({
+        locked: lockedProvider !== null,
+        currentDriver: currentEntry?.driver ?? lockedProvider,
+        nextDriver: resolvedDriverKind,
+        currentContinuationGroupKey: currentEntry?.continuation?.groupKey ?? null,
+        nextContinuationGroupKey: entry?.continuation?.groupKey ?? null,
+      })
     ) {
-      if (options?.focusComposer !== false) scheduleComposerFocus();
+      const resolvedHandoffModel =
+        resolveAppModelSelectionForInstance(instanceId, settings, providerStatuses, model) ?? model;
+      requestProviderHandoff({
+        threadRef: scopeThreadRef(activeThread.environmentId, activeThread.id),
+        instanceId,
+        model: resolvedHandoffModel,
+      });
       return;
-    }
-    if (
-      !supportsProviderSwitchingViaHandoff &&
-      lockedProvider !== null &&
-      activeRuntime?.providerInstanceId
-    ) {
-      const currentEntry = providerStatuses.find(
-        (snapshot) => snapshot.instanceId === activeRuntime.providerInstanceId,
-      );
-      if (
-        currentEntry?.continuation?.groupKey &&
-        entry?.continuation?.groupKey &&
-        currentEntry.continuation.groupKey !== entry.continuation.groupKey
-      ) {
-        if (options?.focusComposer !== false) scheduleComposerFocus();
-        return;
-      }
     }
     // The picker lists an unavailable model only as the active selection, so re-picking keeps it.
     const resolvedModel = resolveAppModelSelectionForInstance(

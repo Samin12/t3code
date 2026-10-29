@@ -17,6 +17,15 @@ import {
 } from "./mcpApp.ts";
 import { resolveT3McpToolId } from "./t3McpToolPresentation.ts";
 
+import { normalizeDecisions, type Decisions } from "./decisions.ts";
+export {
+  normalizeDecisions,
+  decisionsMessage,
+  type Decisions,
+  type DecisionAsk,
+  type DecisionPicks,
+} from "./decisions.ts";
+
 export const SEND_TO_USER_TOOL_NAME = "send_to_user";
 // 4,000 UTF-16 units stay inside MAX_PARSED_BYTES even as 3-byte characters.
 export const SEND_TO_USER_MAX_LENGTH = 4_000;
@@ -51,6 +60,7 @@ interface CompactToolOutput {
   scheduledTaskId?: string;
   status?: "rolled_back";
   htmlRender?: HtmlRenderReference;
+  decisions?: Decisions;
   [MCP_APP_OUTPUT_KEY]?: McpAppReference;
   thread?: { threadId: string };
   threads?: Array<{ threadId?: string; status?: "rolled_back" }>;
@@ -133,7 +143,23 @@ export function compactDynamicToolOutput(value: unknown): CompactToolOutput | un
     remainingNodes: MAX_ENVELOPE_NODES,
     exceeded: false,
   };
-  const result = readResult(value, budget);
+  let result = readResult(value, budget);
+  if (budget.exceeded) {
+    // A card can contain ten asks and thirty links; retain only normalized decisions on this larger budget.
+    const decisionsBudget = {
+      remainingBytes: 524_288,
+      remainingNodes: MAX_ENVELOPE_NODES,
+      exceeded: false,
+    };
+    const larger = readResult(value, decisionsBudget);
+    if (!decisionsBudget.exceeded && normalizeDecisions(larger.data?.decisions) !== undefined) {
+      result = {
+        data: { decisions: larger.data?.decisions },
+        failed: result.failed || larger.failed,
+      };
+      budget.exceeded = false;
+    }
+  }
   const output: CompactToolOutput = result.failed ? { isError: true } : {};
   const data = budget.exceeded ? undefined : result.data;
   if (data !== undefined) {
@@ -153,6 +179,8 @@ export function compactDynamicToolOutput(value: unknown): CompactToolOutput | un
     ) {
       output.sentMessage = data.sentMessage;
     }
+    const decisions = normalizeDecisions(data.decisions);
+    if (decisions !== undefined) output.decisions = decisions;
     const htmlRender = readHtmlRenderReference(data.htmlRender);
     if (htmlRender !== undefined) output.htmlRender = htmlRender;
     const mcpApp = readMcpAppReference(data[MCP_APP_OUTPUT_KEY]);
@@ -204,6 +232,15 @@ export function compactDynamicToolOutput(value: unknown): CompactToolOutput | un
   }
   if (oversized()) delete output[MCP_APP_OUTPUT_KEY];
   return Object.keys(output).length === 0 ? undefined : output;
+}
+
+export function decisionsFromToolItem(item: {
+  readonly toolName: string | null | undefined;
+  readonly output?: unknown;
+}): Decisions | undefined {
+  if (resolveT3McpToolId(item.toolName) !== "end_turn") return undefined;
+  const output = compactDynamicToolOutput(item.output);
+  return output?.isError ? undefined : output?.decisions;
 }
 
 // OpenCode 2 Code Mode reports a script's nested T3 tool calls as one item with the script's result.

@@ -8,6 +8,7 @@ import {
   RunId,
   OrchestrationV2DelegatedFrom,
   OrchestrationV2WorkflowOrigin,
+  OrchestrationV2LibrarianFiling,
   OrchestrationV2RunStatus,
   OrchestrationV2ThreadLaunchWorkspaceStrategy,
   RuntimeMode,
@@ -131,14 +132,20 @@ const ProjectCloneTool = Tool.make("t3_project_clone", {
 const ThreadLaunchTool = Tool.make("t3_thread_launch", {
   ...shared,
   description:
-    "Create a top-level thread in its workspace before starting. Task in `message`. Omit `projectId`, model and modes to inherit yours (outside a thread, pass `projectId` or `scratch`); modes cannot exceed yours. On error or lost reply, reuse `clientRequestId`. Follow it with `t3_thread_read` or `t3_thread_wait`. Mention it with its `link`.",
+    "Create a top-level thread in its workspace before starting. Task in `message`. Omit `projectId`, model and modes to inherit yours (outside a thread, pass `projectId`, `scratch` or `librarian`); modes cannot exceed yours. On error or lost reply, reuse `clientRequestId`. Follow it with `t3_thread_read` or `t3_thread_wait`. Mention it with its `link`.",
   parameters: Schema.Struct({
     environmentId: OrchestratorMcpEnvironmentTarget,
     projectId: Schema.optional(ProjectId),
+    librarian: Schema.optional(
+      Schema.Boolean.annotate({
+        description:
+          "Let the librarian pick the project from the message; projectId, if given, is the fallback. Outside a thread, omit projectId to use the server fallback or first sidebar project.",
+      }),
+    ),
     scratch: Schema.optional(
       Schema.Boolean.annotate({
         description:
-          "No project: a new Scratch folder. Not with `projectId` or `workspaceStrategy`.",
+          "No project: a new Scratch folder. Not with `projectId`, `workspaceStrategy` or `librarian`.",
       }),
     ),
     title: TrimmedNonEmptyString,
@@ -171,6 +178,8 @@ const ThreadLaunchTool = Tool.make("t3_thread_launch", {
   }),
   success: Schema.Struct({
     threadId: ThreadId,
+    librarian: Schema.optional(OrchestrationV2LibrarianFiling),
+    callName: Schema.optional(Schema.String),
     link: Schema.optional(Schema.String),
     projectId: ProjectId,
     modelSelection: ModelSelection,

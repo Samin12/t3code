@@ -804,6 +804,7 @@ function listItemFromShell(
     threadId: shell.id,
     projectId: shell.projectId,
     title: shell.title,
+    ...(shell.callName === undefined ? {} : { callName: shell.callName }),
     link: threadLinkFor(scope, shell.id),
     createdBy: shell.createdBy,
     creationSource: shell.creationSource,
@@ -838,6 +839,7 @@ function threadDetail(
     threadId: projection.thread.id,
     projectId: projection.thread.projectId,
     title: projection.thread.title,
+    ...(projection.thread.callName === undefined ? {} : { callName: projection.thread.callName }),
     link: threadLinkFor(scope, projection.thread.id),
     createdBy: projection.thread.createdBy,
     creationSource: projection.thread.creationSource,
@@ -1609,6 +1611,9 @@ const make = Effect.gen(function* () {
     const result = {
       taskId: task.id,
       childThreadId: task.childThreadId,
+      ...(childControls.thread.callName === undefined
+        ? {}
+        : { callName: childControls.thread.callName }),
       link: formatThreadLink({
         environmentId: scope.environmentId,
         threadId: task.childThreadId,
@@ -1778,6 +1783,7 @@ const make = Effect.gen(function* () {
     return {
       taskId: task.id,
       childThreadId: null,
+      ...(task.remoteChild?.callName === undefined ? {} : { callName: task.remoteChild.callName }),
       ...(task.remoteChild === undefined
         ? {}
         : { remoteChild: task.remoteChild, link: formatThreadLink(task.remoteChild) }),
@@ -2970,6 +2976,9 @@ const make = Effect.gen(function* () {
                 runId: run?.id ?? null,
                 status: run?.status ?? "idle",
                 title: projection.thread.title,
+                ...(projection.thread.callName === undefined
+                  ? {}
+                  : { callName: projection.thread.callName }),
                 createdBy: projection.thread.createdBy,
                 creationSource: projection.thread.creationSource,
                 providerInstanceId: resolvedModelSelection.instanceId,
@@ -3230,6 +3239,7 @@ const make = Effect.gen(function* () {
         ownedTask && !childRequests.some((request) => request.status === "pending");
       return {
         threadId: input.threadId,
+        ...(target.thread.callName === undefined ? {} : { callName: target.thread.callName }),
         runId: result.run?.id ?? null,
         status,
         timedOut: result.timedOut,

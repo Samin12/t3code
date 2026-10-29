@@ -202,12 +202,18 @@ export const ORCHESTRATOR_MCP_RUNNING_TASK_NEXT =
 const OrchestratorMcpRunningTaskNext = Schema.Literal(ORCHESTRATOR_MCP_RUNNING_TASK_NEXT);
 
 export const OrchestratorMcpDelegateTaskResult = Schema.Struct({
+  callName: Schema.optional(Schema.String),
   taskId: NodeId,
   /** Null for a task that runs in a linked environment; see `remoteChild`. */
   childThreadId: Schema.NullOr(ThreadId),
   /** The linked environment and thread a remote task runs as. */
   remoteChild: Schema.optional(
-    Schema.Struct({ environmentId: EnvironmentId, threadId: ThreadId, label: Schema.String }),
+    Schema.Struct({
+      environmentId: EnvironmentId,
+      threadId: ThreadId,
+      label: Schema.String,
+      callName: Schema.optional(Schema.String),
+    }),
   ),
   link: Schema.optional(Schema.String),
   childRunId: Schema.NullOr(RunId),
@@ -286,6 +292,7 @@ export const OrchestratorMcpCreatedThreadStatus = Schema.Union([
 export type OrchestratorMcpCreatedThreadStatus = typeof OrchestratorMcpCreatedThreadStatus.Type;
 
 export const OrchestratorMcpCreatedThread = Schema.Struct({
+  callName: Schema.optional(Schema.String),
   threadId: ThreadId,
   link: Schema.optional(Schema.String),
   runId: Schema.NullOr(RunId),
@@ -353,6 +360,7 @@ export const OrchestratorMcpThreadPullRequest = Schema.Struct({
 export type OrchestratorMcpThreadPullRequest = typeof OrchestratorMcpThreadPullRequest.Type;
 
 export const OrchestratorMcpThreadListItem = Schema.Struct({
+  callName: Schema.optional(Schema.String),
   threadId: ThreadId,
   projectId: ProjectId,
   title: Schema.String,
@@ -405,7 +413,7 @@ const clampedPositiveInt = (maximum: number) =>
 
 export const OrchestratorMcpThreadReadInput = Schema.Struct({
   environmentId: OrchestratorMcpEnvironmentTarget,
-  threadId: ThreadId,
+  threadId: ThreadId.annotate({ description: "Thread id or call name, like Mike." }),
   itemId: Schema.optional(TurnItemId),
   textOffset: Schema.optional(NonNegativeInt),
   view: Schema.optional(Schema.Literals(["messages", "activity"])),
@@ -423,6 +431,7 @@ export const OrchestratorMcpThreadReadInput = Schema.Struct({
 export type OrchestratorMcpThreadReadInput = typeof OrchestratorMcpThreadReadInput.Type;
 
 export const OrchestratorMcpThreadDetail = Schema.Struct({
+  callName: Schema.optional(Schema.String),
   threadId: ThreadId,
   projectId: ProjectId,
   title: Schema.String,
@@ -500,7 +509,7 @@ export type OrchestratorMcpThreadReadResult = typeof OrchestratorMcpThreadReadRe
 
 export const OrchestratorMcpThreadSendInput = Schema.Struct({
   environmentId: OrchestratorMcpEnvironmentTarget,
-  threadId: ThreadId,
+  threadId: ThreadId.annotate({ description: "Thread id or call name, like Mike." }),
   message: OrchestratorMcpPrompt,
   mode: Schema.optional(Schema.Literals(["auto", "queue", "steer", "restart"])),
   freshContext: Schema.optional(
@@ -526,7 +535,7 @@ export type OrchestratorMcpThreadSendResult = typeof OrchestratorMcpThreadSendRe
 
 export const OrchestratorMcpThreadWaitInput = Schema.Struct({
   environmentId: OrchestratorMcpEnvironmentTarget,
-  threadId: ThreadId,
+  threadId: ThreadId.annotate({ description: "Thread id or call name, like Mike." }),
   runId: Schema.optional(RunId),
   timeoutMs: Schema.optional(Schema.Finite),
   untilDelegatedWorkSettled: Schema.optional(
@@ -539,6 +548,7 @@ export const OrchestratorMcpThreadWaitInput = Schema.Struct({
 export type OrchestratorMcpThreadWaitInput = typeof OrchestratorMcpThreadWaitInput.Type;
 
 export const OrchestratorMcpThreadWaitResult = Schema.Struct({
+  callName: Schema.optional(Schema.String),
   threadId: ThreadId,
   runId: Schema.NullOr(RunId),
   status: OrchestratorMcpThreadStatus,
@@ -551,7 +561,7 @@ export type OrchestratorMcpThreadWaitResult = typeof OrchestratorMcpThreadWaitRe
 
 export const OrchestratorMcpThreadInterruptInput = Schema.Struct({
   environmentId: OrchestratorMcpEnvironmentTarget,
-  threadId: ThreadId,
+  threadId: ThreadId.annotate({ description: "Thread id or call name, like Mike." }),
   runId: Schema.optional(RunId),
   reason: Schema.optional(Schema.String.check(Schema.isMaxLength(2_000))),
   /**

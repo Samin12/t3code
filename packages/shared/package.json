@@ -499,6 +499,10 @@
       "types": "./src/threadFindText.ts",
       "import": "./src/threadFindText.ts"
     },
+    "./threadCallNames": {
+      "types": "./src/threadCallNames.ts",
+      "import": "./src/threadCallNames.ts"
+    },
     "./threadSearch": {
       "types": "./src/threadSearch.ts",
       "import": "./src/threadSearch.ts"

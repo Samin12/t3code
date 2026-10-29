@@ -3,6 +3,7 @@ import type { SnoozePreset } from "@t3tools/client-runtime/state/thread-settled"
 
 export type ThreadActionMenuId =
   | "find"
+  | "handoff"
   | "new-thread-on-branch"
   | "filter-by-project"
   | "turn-into-project"
@@ -120,6 +121,7 @@ export function buildThreadActionMenuItems(
     ...(state.canFind
       ? [{ id: "find" as const, label: "Find in thread", icon: "text-search" }]
       : []),
+    { id: "handoff", label: "Hand off to another model…", icon: "arrow-right-left" },
     ...(state.branch
       ? [
           {

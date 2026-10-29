@@ -701,6 +701,26 @@ describe("buildThreadActionItems", () => {
     ]);
   });
 
+  it("finds a thread by its spoken call name", () => {
+    const items = buildThreadActionItems({
+      threads: [makeThread({ id: ThreadId.make("named"), title: "Fix login", callName: "Mike" })],
+      projectByKey: new Map(),
+      icon: null,
+      runThread: async () => undefined,
+    });
+    const groups = filterCommandPaletteGroups({
+      activeGroups: [],
+      query: "mike",
+      isInSubmenu: false,
+      projectSearchItems: [],
+      threadSearchItems: items,
+    });
+    expect(groups.flatMap((group) => group.items.map((item) => item.value))).toContain(
+      "thread:environment-local:named",
+    );
+    expect(items[0]?.title).toBe("Fix login");
+  });
+
   it("ranks word-start title matches above newer mid-word matches", () => {
     const items = buildThreadActionItems({
       threads: [

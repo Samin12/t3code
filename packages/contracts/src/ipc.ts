@@ -1014,6 +1014,11 @@ export const SystemSettingsPaneSchema = Schema.Literals(["full-disk-access"]);
 export type SystemSettingsPane = typeof SystemSettingsPaneSchema.Type;
 
 export interface DesktopBridge {
+  heptabase?: {
+    request: (
+      input: import("./heptabase.ts").HeptabaseRequest,
+    ) => Promise<import("./heptabase.ts").HeptabaseResponse>;
+  };
   getAppBranding: () => DesktopAppBranding | null;
   getRelayTelemetryEnabled: () => boolean;
   getPathForFile: (file: File) => string;

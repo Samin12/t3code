@@ -109,6 +109,8 @@ import {
   startAttachmentUpload,
 } from "../../lib/attachmentUploadQueue";
 import { appAtomRegistry } from "../../rpc/atomRegistry";
+import { primaryEnvironmentIdAtom } from "../../state/primaryEnvironment";
+import { readHeptabasePromptContext } from "../heptabase/promptContext";
 import { fileAttachmentCapabilityBlockReason } from "./composerAttachmentFiles";
 import { useLinkedEnvironments } from "../../state/peerLinks";
 import { readEnvironmentScope } from "../../state/session";
@@ -900,12 +902,30 @@ export function useComposerSend(input: ComposerSendInput) {
     );
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
+    let heptabaseContext = "";
+    const heptabaseBridge = window.desktopBridge?.heptabase;
+    if (
+      heptabaseBridge &&
+      activeThread.environmentId === appAtomRegistry.get(primaryEnvironmentIdAtom)
+    ) {
+      sendInFlightRef.current = true;
+      const heptabase = await readHeptabasePromptContext(heptabaseBridge, {
+        environmentId: activeThread.environmentId,
+        threadId: threadIdForSend,
+      });
+      sendInFlightRef.current = false;
+      if (!heptabase.ok) {
+        setThreadError(threadIdForSend, heptabase.error);
+        return;
+      }
+      heptabaseContext = heptabase.context;
+    }
     const outgoingMessageText = formatOutgoingPrompt({
       provider: ctxSelectedProvider,
       model: ctxSelectedModel,
       models: ctxSelectedProviderModels,
       effort: ctxSelectedPromptEffort,
-      text: messageTextForSend || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT,
+      text: (messageTextForSend || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT) + heptabaseContext,
     });
     if (composerRef.current?.validateProviderInput(outgoingMessageText) === false) {
       return;

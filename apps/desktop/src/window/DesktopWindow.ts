@@ -506,7 +506,8 @@ export const make = Effect.gen(function* () {
     window.webContents.on("will-attach-webview", (event, webPreferences, params) => {
       if (
         typeof params.partition !== "string" ||
-        !previewManager.isBrowserPartition(params.partition)
+        (!previewManager.isBrowserPartition(params.partition) &&
+          params.partition !== "persist:t3code-heptabase")
       ) {
         event.preventDefault();
         return;
@@ -521,6 +522,11 @@ export const make = Effect.gen(function* () {
           ...(webPreferences.additionalArguments ?? []),
           PASSKEY_BRIDGE_ARGUMENT,
         ];
+      }
+
+      if (params.partition === "persist:t3code-heptabase") {
+        webPreferences.contextIsolation = true;
+        delete webPreferences.preload;
       }
     });
 

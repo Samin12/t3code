@@ -13,6 +13,7 @@ import { createScratchProjectActions } from "../hooks/useScratchProject";
 import { getClientSettings } from "../hooks/useSettings";
 import { startNewThreadFromContext } from "../lib/chatThreadActions";
 import { selectProjectGroupingSettings } from "@t3tools/client-runtime/state/project-grouping";
+import { requestProviderHandoff } from "../providerHandoffBus";
 import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { buildSidebarProjectSnapshots } from "../sidebarProjectGrouping";
@@ -121,6 +122,12 @@ export function installChatRouteCommands(router: AnyRouter): () => void {
         if (environmentId === null) return;
         claim(event);
         void scratch.startScratchThread(environmentId);
+      },
+      "thread.handoff": (event) => {
+        const threadRef = readRouteThreadRef();
+        if (!threadRef) return;
+        claim(event);
+        requestProviderHandoff({ threadRef });
       },
       "chat.new": (event) => {
         // The boring sidebar's folders already show the context, so it starts in

@@ -126,6 +126,13 @@ import {
 import { ComposerBanner } from "./ComposerBanner";
 import { ComposerSurface } from "./ComposerSurface";
 import { CollapsedComposerPromptPreview } from "./CollapsedComposerPromptPreview";
+import { DecisionsCard } from "./DecisionsCard";
+import { useDecisions } from "./useDecisions";
+import {
+  decisionsEnterAction,
+  prependDecisions,
+  type ActiveDecisions,
+} from "./decisionsCard.logic";
 import { ComposerBannerStack, type ComposerBannerStackItem } from "./ComposerBannerStack";
 import {
   attachmentsToReleaseOnUploadCapabilityLoss,
@@ -337,6 +344,7 @@ export interface ChatComposerHandle {
   addTerminalContext: (selection: TerminalContextSelection) => void;
   getSendContext: () => {
     answeringPendingUserInput: boolean;
+    decisionsMessage?: string;
     prompt: string;
     images: ComposerImageAttachment[];
     files: ComposerFileAttachment[];
@@ -359,6 +367,7 @@ export interface ChatComposerHandle {
 }
 
 export interface ChatComposerProps {
+  activeDecisions?: ActiveDecisions | null;
   composerDraftTarget: ScopedThreadRef | DraftId;
   environmentId: EnvironmentId;
   canOperateThread: boolean;
@@ -1117,8 +1126,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     };
   }, [backgroundThread]);
 
+  const decisionsDraft = useDecisions(props.activeDecisions, attachmentTargetKey);
   const composerSendState = deriveComposerSendState({
-    prompt,
+    prompt: prependDecisions(decisionsDraft.message, prompt),
     imageCount: composerImages.length + composerFiles.length,
     existingAttachmentCount: editingQueuedAttachments?.length ?? 0,
     terminalContexts: composerTerminalContexts,
@@ -1254,7 +1264,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       }
     : null;
   const showResumeAction =
-    canResume && !composerDraftHasUserContent(composerDraft) && !isEditingQueuedMessage;
+    canResume &&
+    !decisionsDraft.message &&
+    !composerDraftHasUserContent(composerDraft) &&
+    !isEditingQueuedMessage;
   const collapsedComposerPrimaryActionDisabled =
     phase === "running" ||
     isSendBusy ||
@@ -2226,7 +2239,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       return true;
     }
     const submission = submitComposerDraft({
-      prompt: promptRef.current,
+      prompt: prependDecisions(decisionsDraft.message, promptRef.current),
       submissionTarget,
       event,
       onSend: (sendEvent) => {
@@ -3278,6 +3291,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         });
       },
       getSendContext: () => ({
+        decisionsMessage: decisionsDraft.message,
         answeringPendingUserInput: activePendingProgress !== null,
         shownPendingApprovalIds: pendingApprovals
           .map((approval) => approval.requestId)
@@ -3370,6 +3384,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       selectedProvider,
       selectedProviderModels,
       compactThreadContextStable,
+      decisionsDraft.message,
     ],
   );
 
@@ -3427,6 +3442,31 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     <form
       ref={composerFormRef}
       onSubmit={submitComposerStable}
+      onKeyDownCapture={(event) => {
+        if (
+          !props.activeDecisions ||
+          activePendingProgress ||
+          !(event.target instanceof Element) ||
+          !event.target.closest('[contenteditable="true"]')
+        )
+          return;
+        const action = decisionsEnterAction({
+          key: event.key,
+          shiftKey: event.shiftKey,
+          altKey: event.altKey,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          isComposing: event.nativeEvent.isComposing,
+          repeat: event.repeat,
+          prompt: promptRef.current,
+          message: decisionsDraft.message,
+          ready: decisionsDraft.ready,
+        });
+        if (!action) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (action === "send") submitComposer();
+      }}
       onFocusCapture={(event) => {
         const activeElement = event.target;
         if (
@@ -3479,6 +3519,18 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       <ComposerBanner.Dock>
         <ComposerBanner.Column>
           <ComposerBannerStack items={shelfItems} />
+          {props.activeDecisions ? (
+            <DecisionsCard
+              key={`${attachmentTargetKey}:${props.activeDecisions.id}`}
+              decisions={props.activeDecisions.decisions}
+              picks={decisionsDraft.picks}
+              onChange={decisionsDraft.setPicks}
+              onSend={() => submitComposer()}
+              disabled={!canOperateThread || isSendBusy || isSendDisabled}
+              cwd={gitCwd ?? undefined}
+              threadRef={routeThreadRef}
+            />
+          ) : null}
           {showComposerTopDrawer ? (
             <ComposerBanner.Attachment>
               <ComposerBanner.Root data-chat-composer-top-drawer="true" variant="info">

@@ -844,6 +844,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     ],
   },
   {
+    id: "librarian",
+    title: msg("New threads use the librarian"),
+    to: "/settings/threads",
+    searchTerms: [msg("automatic project routing folder new thread")],
+  },
+  {
     id: "new-threads",
     title: msg("New threads"),
     to: "/settings/threads",

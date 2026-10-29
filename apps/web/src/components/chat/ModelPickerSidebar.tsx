@@ -4,6 +4,7 @@ import { memo, useLayoutEffect, useRef, useState } from "react";
 import { msg, T, useMessages } from "gt-react";
 import { StarIcon } from "lucide-react";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
+import { modelPickerUsage } from "./ModelPickerUsage.logic";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 import type { MessageResolver } from "../../i18n/messages";
@@ -53,11 +54,20 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
   onFocusSearch: () => void;
   instanceEntries: ReadonlyArray<ProviderInstanceEntry>;
   showFavorites?: boolean;
+  /** Clock for usage reset countdowns, advanced by the picker. */
+  usageNow?: number;
   disabledInstanceIds?: ReadonlySet<ProviderInstanceId>;
+  /**
+   * Ready instances outside the current thread's continuation group. Selecting
+   * one of their models starts a new thread instead of resuming this one.
+   */
+  handoffInstanceIds?: ReadonlySet<ProviderInstanceId>;
+  /** Non-ready instances whose selected unavailable model remains reachable. */
   selectableUnavailableInstanceIds?: ReadonlySet<ProviderInstanceId>;
   getDisabledInstanceTooltip?: (entry: ProviderInstanceEntry) => string;
 }) {
   const m = useMessages();
+  const [initialUsageNow] = useState(Date.now);
   const handleSelect = (instanceId: ProviderInstanceId | "favorites") => {
     props.onSelectInstance(instanceId);
   };
@@ -145,6 +155,7 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
           {props.instanceEntries.map((entry) => {
             const isUnavailable = !isProviderInstancePickerReady(entry);
             const isContextDisabled = props.disabledInstanceIds?.has(entry.instanceId) ?? false;
+            const isHandoff = props.handoffInstanceIds?.has(entry.instanceId) ?? false;
             const unavailableSelectionIsReachable =
               props.selectableUnavailableInstanceIds?.has(entry.instanceId) ?? false;
             const isDisabled =
@@ -153,11 +164,18 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
             const isHovered = hoveredInstanceId === entry.instanceId;
             const showInstanceBadge = shouldShowInstanceBadge(entry, props.instanceEntries);
 
+            const usage = modelPickerUsage(
+              entry.snapshot.usageLimits,
+              props.usageNow ?? initialUsageNow,
+              m,
+            );
             const tooltip = isUnavailable
               ? describeUnavailableInstance(entry, m)
               : isContextDisabled
                 ? (props.getDisabledInstanceTooltip?.(entry) ?? entry.displayName)
-                : entry.displayName;
+                : isHandoff
+                  ? `${entry.displayName}: starts a new thread. This chat stays here.\n${usage.detail}`
+                  : `${entry.displayName}\n${usage.detail}`;
 
             const button = (
               <Toolbar.Button
@@ -179,7 +197,9 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
                 focusableWhenDisabled={!isDisabled}
                 aria-pressed={isSelected}
                 type="button"
-                aria-label={isUnavailable || isContextDisabled ? tooltip : entry.displayName}
+                aria-label={
+                  isUnavailable || isContextDisabled || isHandoff ? tooltip : entry.displayName
+                }
               >
                 <ProviderInstanceIcon
                   driverKind={entry.driverKind}
@@ -188,7 +208,7 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
                   acpRegistryAgentId={entry.acpRegistryAgentId}
                   acpRegistryIconUrl={entry.acpRegistryIconUrl}
                   showBadge={showInstanceBadge}
-                  className="size-6 z-30"
+                  className={cn("size-6 z-30", usage.exhausted && "opacity-50")}
                   iconClassName="size-5"
                   indicatorBackground={
                     isHovered && !isDisabled
@@ -199,6 +219,15 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
                   }
                   {...(entry.accentColor ? { badgeClassName: "h-3 min-w-3 px-0.5 text-5xs" } : {})}
                 />
+                {usage.exhausted ? (
+                  <span
+                    className={cn(
+                      "absolute bottom-1 right-1 size-1.5 rounded-full",
+                      usage.weeklyExhausted ? "bg-error" : "bg-warning",
+                    )}
+                    aria-hidden
+                  />
+                ) : null}
               </Toolbar.Button>
             );
 
@@ -221,7 +250,7 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
                     sideOffset={PICKER_TOOLTIP_SIDE_OFFSET}
                     align="center"
                   >
-                    {tooltip}
+                    <span className="whitespace-pre-line">{tooltip}</span>
                   </TooltipPopup>
                 </Tooltip>
               </div>

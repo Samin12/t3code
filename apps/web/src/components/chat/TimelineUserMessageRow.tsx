@@ -64,6 +64,7 @@ import { MessageCopyButton } from "./MessageCopyButton";
 import { promptLinkFor } from "../promptLinks/copyPromptLink";
 import { PierreEntryIcon } from "./PierreEntryIcon";
 import { formatBytes } from "../../lib/formatBytes";
+import { splitHeptabaseContext } from "../heptabase/promptContext";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
   asKnownContextRecord,
@@ -1222,7 +1223,8 @@ const CollapsibleUserMessageBody = memo(function CollapsibleUserMessageBody(prop
   const [expanded, setExpanded] = useState(false);
   const revealForFind = () => setExpanded(true);
   const revealRef = findRevealRef(revealForFind);
-  const hasVisibleBody = props.text.trim().length > 0;
+  const message = splitHeptabaseContext(props.text);
+  const hasVisibleBody = message.text.trim().length > 0;
   const { ref: contentRef, tallEnough: canCollapse } = useTallEnoughToFold(
     props.collapsible !== false && hasVisibleBody,
   );
@@ -1252,13 +1254,23 @@ const CollapsibleUserMessageBody = memo(function CollapsibleUserMessageBody(prop
         >
           <div ref={contentRef}>
             <UserMessageBody
-              text={props.text}
+              text={message.text}
               renderContextReference={props.renderContextReference}
               skills={props.skills}
               markdownCwd={props.markdownCwd}
             />
           </div>
         </div>
+      ) : null}
+      {message.context ? (
+        <details className="mt-2 text-xs text-muted-foreground">
+          <summary className="cursor-pointer">
+            <T>Heptabase context</T>
+          </summary>
+          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words">
+            {message.context}
+          </pre>
+        </details>
       ) : null}
       {showCollapseControl ? (
         <div className="mt-1.5 flex items-center justify-end gap-2" data-user-message-footer="true">

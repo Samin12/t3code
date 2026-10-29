@@ -151,3 +151,8 @@ export const COMPLETE_LEGACY_LOCAL_STORAGE_CHANNEL = "desktop:complete-legacy-lo
 export const RESTART_AUDIO_SERVICE_CHANNEL = "desktop:restart-audio-service";
 
 export const START_FILE_DRAG_CHANNEL = "desktop:start-file-drag";
+
+export const TERMINAL_MAC_REQUEST_CHANNEL = "terminal-mac:request";
+export const TERMINAL_MAC_SUBSCRIPTION_CHANNEL = "terminal-mac:subscription";
+export const TERMINAL_MAC_EVENT_CHANNEL = "terminal-mac:event";
+export const HEPTABASE_REQUEST_CHANNEL = "heptabase:request";

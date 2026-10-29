@@ -1,3 +1,5 @@
+import * as TerminalMac from "./terminalMac/TerminalMac.ts";
+import * as Heptabase from "./heptabase/Heptabase.ts";
 import * as MacPermissions from "./permissions/MacPermissions.ts";
 import { handleStdioError } from "./app/stdioErrors.ts";
 
@@ -68,6 +70,7 @@ import * as DesktopLegacyLocalStorage from "./app/DesktopLegacyLocalStorage.ts";
 import * as DesktopTelemetryPublisher from "./telemetry/DesktopTelemetryPublisher.ts";
 import * as DesktopRendererHistory from "./telemetry/DesktopRendererHistory.ts";
 import * as DesktopUpdatePolicy from "./updates/DesktopUpdatePolicy.ts";
+import * as CustomNightlyUpdater from "./updates/CustomNightlyUpdater.ts";
 import * as DesktopUpdates from "./updates/DesktopUpdates.ts";
 import * as BrowserImport from "./preview/BrowserImport/BrowserImport.ts";
 import * as LinuxBrowserSecret from "./preview/BrowserImport/LinuxBrowserSecret.ts";
@@ -138,12 +141,16 @@ const layerElectron = Layer.mergeAll(
   ElectronSafeStorage.layer,
   ElectronShell.layer,
   ElectronTheme.layer,
-  ElectronUpdater.layer,
+  Electron.app.isPackaged || process.env.T3CODE_CUSTOM_UPDATE_SCRIPT
+    ? CustomNightlyUpdater.layer
+    : ElectronUpdater.layer,
   ElectronWindow.layer,
   DesktopIpc.layer(Electron.ipcMain).pipe(Layer.provide(ElectronWindow.layer)),
 );
 
 const layerDesktopFoundation = Layer.mergeAll(
+  Heptabase.layer,
+  TerminalMac.layer,
   MacPermissions.layer,
   DesktopManagedPolicy.layer,
   DesktopState.layer,

@@ -39,6 +39,7 @@ import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import * as OrchestrationMcp from "../../OrchestratorMcpService.ts";
 import { newCommandId, readCaller, resolveProjectId, unavailable } from "../../threadAccess.ts";
+import { resolveLibrarianFallback } from "../../../librarian/fallback.ts";
 import { ProjectToolkit } from "./tools.ts";
 
 const isAboveCeilingError = Schema.is(OrchestratorRuntimeModeAboveCeilingError);
@@ -224,12 +225,14 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
           });
         if (
           input.scratch === true &&
-          (input.projectId !== undefined || input.workspaceStrategy !== undefined)
+          (input.projectId !== undefined ||
+            input.workspaceStrategy !== undefined ||
+            input.librarian === true)
         )
           return yield* new OrchestratorMcpFailure({
             code: "invalid_request",
             message:
-              "scratch:true picks its own project and folder; omit projectId and workspaceStrategy.",
+              "scratch:true picks its own project and folder; omit projectId, workspaceStrategy and librarian.",
           });
         const projectId =
           input.scratch === true
@@ -243,7 +246,9 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
                     }),
                 ),
               )).projectId
-            : yield* resolveProjectId(context, input.projectId);
+            : input.librarian === true && input.projectId === undefined && caller === undefined
+              ? yield* resolveLibrarianFallback().pipe(Effect.mapError(unavailable))
+              : yield* resolveProjectId(context, input.projectId);
         // A retry of an accepted launch replays it: it keeps the model it started
         // with and skips the checks only a new launch needs, which the project
         // may no longer pass, such as a base branch deleted since.
@@ -254,7 +259,13 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
         const launchedModel =
           launched === null || launched.deletedAt !== null ? undefined : launched.modelSelection;
         const replaying = launchedModel !== undefined;
-        if (launched !== null && replaying && launched.projectId !== projectId)
+        // The librarian may file a launch elsewhere; its retries restore that project.
+        if (
+          launched !== null &&
+          replaying &&
+          launched.projectId !== projectId &&
+          input.librarian !== true
+        )
           return yield* new OrchestratorMcpFailure({
             code: "invalid_request",
             message: "A launch retry must use the original project.",
@@ -407,6 +418,7 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
           commandId,
           threadId,
           projectId,
+          ...(input.librarian === undefined ? {} : { librarian: input.librarian }),
           title: input.title,
           modelSelection,
           runtimeMode: startedRuntimeMode,
@@ -455,8 +467,10 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
         const run = result.projection.runs.find((run) => run.userMessageId === messageId);
         return {
           threadId: thread.id,
+          ...(thread.callName === undefined ? {} : { callName: thread.callName }),
           link: McpInvocationContext.threadLinkFor(scope, thread.id, thread.title),
           projectId: thread.projectId,
+          ...(result.librarian ? { librarian: result.librarian } : {}),
           modelSelection: thread.modelSelection,
           runId: run?.id ?? null,
           status: run?.status ?? null,

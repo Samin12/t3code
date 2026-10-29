@@ -10,14 +10,13 @@ import {
 import { searchableMessageSegments, searchablePlanSegments } from "@t3tools/shared/threadFindText";
 import { countThreadSearchOccurrences } from "@t3tools/shared/threadSearch";
 import { htmlRenderFromToolItem, mcpAppFromToolItem } from "@t3tools/shared/toolOutput";
-import * as Cache from "effect/Cache";
-import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as RcRef from "effect/RcRef";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 import * as SqlClient from "effect/sql/SqlClient";
+import { makeThreadFindTextCache, TextKey } from "./ThreadFindTextCache.ts";
 import {
   ProjectionStoreReadError,
   ProjectionStoreThreadNotFoundError,
@@ -65,16 +64,6 @@ interface RenderedSnapshot {
       }
     | undefined;
 }
-class TextKey extends Data.Class<{
-  text: string;
-  role: "user" | "assistant" | "plan";
-  streaming: boolean;
-  hasContext: boolean;
-  cwd: string | undefined;
-  skills: NonNullable<OrchestrationV2SearchThreadInput["skills"]>;
-  theme: OrchestrationV2SearchThreadInput["theme"];
-}> {}
-
 function textKey(
   item: OrchestrationV2TurnItem,
   cwd: string | undefined,
@@ -270,17 +259,13 @@ export const makeThreadFind = Effect.fn("makeThreadFind")(function* (
           });
     });
   });
-  const makeTextCache = (capacity: number) =>
-    Cache.make({ capacity, lookup: (key: TextKey) => Effect.sync(() => parseText(key)) });
   // Text keys are message content, so entries never go stale. Cache TTL only expires on access
   // and would keep the last searched threads forever. Each search borrows this for its whole
   // stream, and all of it is dropped once Find is idle.
   const findCaches = yield* RcRef.make({
     acquire: Effect.all({
-      // Scans visit every message; a cache smaller than the thread churns without hits.
-      text: makeTextCache(8192),
-      // Bounded separately because each entry can hold a large body; typing reuses the parse.
-      largeText: makeTextCache(32),
+      // Bounded by retained bytes, so one huge thread cannot pin unbounded parsed text.
+      text: makeThreadFindTextCache(parseText),
       scans: Effect.sync((): CompletedScans => new Map()),
       rendered: Effect.sync((): RenderedSnapshot => ({ current: undefined })),
     }),
@@ -407,7 +392,7 @@ export const makeThreadFind = Effect.fn("makeThreadFind")(function* (
   const searchThreadStream = (input: OrchestrationV2SearchThreadInput) =>
     Stream.unwrap(
       Effect.gen(function* () {
-        const { scans, rendered: renderedSnapshot, ...textCache } = yield* RcRef.get(findCaches);
+        const { scans, rendered: renderedSnapshot, text: textCache } = yield* RcRef.get(findCaches);
         // Release SQLite before decoding and parsing. Both frames describe one snapshot.
         const data = yield* snapshot(input, scans, renderedSnapshot);
         if (data.result) return Stream.succeed(data.result);
@@ -462,10 +447,7 @@ export const makeThreadFind = Effect.fn("makeThreadFind")(function* (
               decoded.item.text === "" &&
               embeddedResultRunIds.has(decoded.item.runId)
                 ? []
-                : yield* Cache.get(
-                    key.text.length <= 32_768 ? textCache.text : textCache.largeText,
-                    key,
-                  );
+                : yield* textCache.get(key);
             rendered = { ...documentFor(decoded, 0), segments, sourceLength: key.text.length };
           }
           const document = {

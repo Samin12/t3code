@@ -40,6 +40,8 @@ import { horizontalListSortingStrategy, SortableContext, useSortable } from "@dn
 import { CSS } from "@dnd-kit/utilities";
 import {
   CircleDotIcon,
+  PanelsTopLeft,
+  Monitor,
   Smartphone,
   ChevronDown,
   ChevronLeft,
@@ -151,6 +153,10 @@ export interface RightPanelTabsProps {
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
+  onAddMac?: (() => void) | undefined;
+  macAvailable?: boolean | undefined;
+  onAddHeptabase?: (() => void) | undefined;
+  heptabaseAvailable?: boolean | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -335,6 +341,10 @@ function RightPanelEmptyState(props: {
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
+  onAddMac?: (() => void) | undefined;
+  macAvailable?: boolean | undefined;
+  onAddHeptabase?: (() => void) | undefined;
+  heptabaseAvailable?: boolean | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -397,6 +407,23 @@ function RightPanelEmptyState(props: {
       available: props.pullRequestsAvailable,
       disabledReason: messages(SURFACE_UNAVAILABLE_HINTS.pullRequests),
       onClick: props.onAddPullRequests,
+    },
+    {
+      label: msg("Mac"),
+      description: msg("Use a virtual Mac on this machine."),
+      icon: Monitor,
+      shortcut: "V",
+      available: props.macAvailable ?? false,
+      disabledReason: gt("Available in the desktop app."),
+      onClick: () => props.onAddMac?.(),
+    },
+    {
+      label: msg("Heptabase"),
+      icon: PanelsTopLeft,
+      shortcut: "H",
+      available: props.heptabaseAvailable ?? false,
+      disabledReason: gt("Available in the desktop app with a local thread."),
+      onClick: () => props.onAddHeptabase?.(),
     },
     {
       label: msg("Device"),
@@ -610,6 +637,10 @@ function surfaceTitle(
     case "issue":
       // A git host numbers its issues; a tracker with keys of its own, such as Linear, names them.
       return /^\d+$/.test(surface.key) ? `#${surface.key}` : surface.key;
+    case "mac":
+      return resolve(msg("Mac"));
+    case "heptabase":
+      return resolve(msg("Heptabase"));
     case "device":
       return surface.title ?? surface.target?.name ?? resolve(msg("Device"));
     case "side-chat":
@@ -706,6 +737,10 @@ function SurfaceIcon({
       return <IssueSurfaceIcon surface={surface} environmentId={environmentId} />;
     case "side-chat":
       return <SideChatTabIcon environmentId={environmentId} threadId={surface.threadId} />;
+    case "mac":
+      return <Monitor className="size-3 shrink-0" />;
+    case "heptabase":
+      return <PanelsTopLeft className="size-3 shrink-0" />;
     case "device":
       return surface.target?.platform === "ios" ? (
         <AppleIcon className="size-3 shrink-0" />
@@ -1218,6 +1253,23 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       onClick: props.onAddPullRequests,
     },
     {
+      label: msg("Mac"),
+      description: msg("Use a virtual Mac on this machine."),
+      icon: Monitor,
+      shortcut: "V",
+      available: props.macAvailable ?? false,
+      disabledReason: gt("Available in the desktop app."),
+      onClick: () => props.onAddMac?.(),
+    },
+    {
+      label: msg("Heptabase"),
+      icon: PanelsTopLeft,
+      shortcut: "H",
+      available: props.heptabaseAvailable ?? false,
+      disabledReason: gt("Available in the desktop app with a local thread."),
+      onClick: () => props.onAddHeptabase?.(),
+    },
+    {
       label: msg("Device"),
       icon: Smartphone,
       shortcut: "M",
@@ -1652,6 +1704,10 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             deviceAvailable={props.deviceAvailable}
             sideChatAvailable={props.sideChatAvailable === true}
             sideChatDisabledReason={props.sideChatDisabledReason ?? null}
+            onAddMac={props.onAddMac}
+            macAvailable={props.macAvailable}
+            onAddHeptabase={props.onAddHeptabase}
+            heptabaseAvailable={props.heptabaseAvailable}
           />
         ) : (
           props.children

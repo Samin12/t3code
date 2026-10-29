@@ -283,10 +283,13 @@ describe("CommandPalette open intents", () => {
     await page.getByRole("option", { name: /acme/i }).click();
 
     await vi.waitFor(() =>
-      expect(entities.handleNewThread).toHaveBeenCalledWith({
-        environmentId: open.environmentId,
-        projectId: open.id,
-      }),
+      expect(entities.handleNewThread).toHaveBeenCalledWith(
+        {
+          environmentId: open.environmentId,
+          projectId: open.id,
+        },
+        { librarian: false },
+      ),
     );
   });
 
@@ -302,10 +305,13 @@ describe("CommandPalette open intents", () => {
     await userEvent.keyboard("{Control>}1{/Control}");
 
     await vi.waitFor(() =>
-      expect(entities.handleNewThread).toHaveBeenCalledWith({
-        environmentId: EnvironmentId.make("local"),
-        projectId: ProjectId.make("lima"),
-      }),
+      expect(entities.handleNewThread).toHaveBeenCalledWith(
+        {
+          environmentId: EnvironmentId.make("local"),
+          projectId: ProjectId.make("lima"),
+        },
+        { librarian: false },
+      ),
     );
   });
 });

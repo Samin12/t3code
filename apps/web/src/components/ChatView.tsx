@@ -289,6 +289,7 @@ import {
   useThreadCheckpointSummaries,
 } from "../state/entities";
 import { useEnvironmentShellHasSnapshot } from "../state/shell";
+import { activeDecisionsForThread } from "./chat/decisionsCard.logic";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
 import { DraftHeroHeadline } from "./chat/DraftHeroHeadline";
 import { ExpandedImageDialogHost, openExpandedImagePreview } from "./chat/ExpandedImageDialog";
@@ -1154,6 +1155,12 @@ export default function ChatView(props: ChatViewProps) {
   const [chatCanvasStore] = useState(createChatCanvasStore);
 
   const latestRunSettled = isLatestRunSettled(activeLatestRun, activeRuntime);
+  const activeDecisions = activeDecisionsForThread({
+    items: serverVisibleTurnItems,
+    latestRunId: activeLatestRun?.runId ?? null,
+    settled: latestRunSettled && activeRuntime?.status !== "running",
+    hasOptimisticUserMessage: optimisticUserMessages.length > 0,
+  });
   const activeThreadEnvironmentId = activeThread?.environmentId;
   const activeThreadProjectId = activeThread?.projectId;
   const activeProjectRef =
@@ -2423,6 +2430,8 @@ export default function ChatView(props: ChatViewProps) {
     addDeviceSurfaceStable,
     addDiffSurfaceStable,
     addFilesSurfaceStable,
+    addHeptabaseSurfaceStable,
+    addMacSurfaceStable,
     addPullRequestSurfaceStable,
     addPullRequestsSurfaceStable,
     closePreviewPanelStable,
@@ -3305,6 +3314,7 @@ export default function ChatView(props: ChatViewProps) {
       threadRef={activeThreadRef}
       environmentId={activeThread.environmentId}
       visible={rightPanelOpen}
+      threadTitle={activeThread.title}
       composerDraftTarget={composerDraftTarget}
       keybindings={keybindings}
       configuredPreviewUrls={configuredPreviewUrls}
@@ -3443,6 +3453,7 @@ export default function ChatView(props: ChatViewProps) {
               activeThreadId={activeThread.id}
               isServerThread={isServerThread}
               activeThreadTitle={activeThread.title}
+              activeThreadCallName={activeThread.callName}
               activeThreadLinkOrigin={activeThreadShell?.linkOrigin?.label ?? null}
               activeProject={activeProject ?? null}
               parentThreadLink={headerParentThreadLink}
@@ -3699,6 +3710,7 @@ export default function ChatView(props: ChatViewProps) {
                             ) : null}
                             {!composerMounted ? null : (
                               <ChatComposer
+                                activeDecisions={activeDecisions}
                                 canOperateThread={canOperateThread}
                                 reportedModelSelection={reportedModelSelection}
                                 multipleModelSelections={multipleModelSelections}
@@ -4111,6 +4123,13 @@ export default function ChatView(props: ChatViewProps) {
           onAddSideChat={sideChatsOffered ? openSideChatStable : undefined}
           browserAvailable={canOperatePreview && browserAvailable}
           terminalAvailable={activeProject !== null && canOperateTerminal}
+          onAddMac={addMacSurfaceStable}
+          macAvailable={Boolean(window.desktopBridge?.terminalMac)}
+          onAddHeptabase={addHeptabaseSurfaceStable}
+          heptabaseAvailable={
+            Boolean(window.desktopBridge?.heptabase) &&
+            activeThread.environmentId === primaryEnvironment?.environmentId
+          }
           diffAvailable={isServerThread && isGitRepo}
           filesAvailable={activeProject !== null}
           pullRequestAvailable={pullRequestSurfaceAvailable}

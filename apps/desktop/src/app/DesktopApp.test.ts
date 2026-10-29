@@ -48,6 +48,7 @@ import * as DesktopUpdates from "../updates/DesktopUpdates.ts";
 import * as DesktopApplicationMenu from "../window/DesktopApplicationMenu.ts";
 import * as DesktopWindow from "../window/DesktopWindow.ts";
 import * as DesktopWslBackend from "../wsl/DesktopWslBackend.ts";
+import * as Heptabase from "../heptabase/Heptabase.ts";
 
 import * as BrowserImport from "../preview/BrowserImport/BrowserImport.ts";
 import * as DesktopBackendConfiguration from "../backend/DesktopBackendConfiguration.ts";
@@ -205,6 +206,9 @@ it.effect(
             Layer.mock(ElectronShell.ElectronShell, {}),
             Layer.mock(ElectronTheme.ElectronTheme, {}),
             Layer.mock(ElectronWindow.ElectronWindow, {}),
+            Layer.mock(Heptabase.Heptabase, {
+              request: () => Effect.die("unexpected Heptabase request"),
+            }),
             Layer.mock(MacPermissions.MacPermissions, {}),
             Layer.mock(PreviewManager.PreviewManager, {
               isBrowserPartition: () => {

@@ -12,7 +12,10 @@ import { createNewThreadHandler, resolveDefaultProjectRef } from "../hooks/useHa
 import { createScratchProjectActions } from "../hooks/useScratchProject";
 import { getClientSettings } from "../hooks/useSettings";
 import { startNewThreadFromContext } from "../lib/chatThreadActions";
+import { findProjectForSlug, projectSlugFromNewThreadCommand } from "../projectNewThreadCommand";
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
 import { selectProjectGroupingSettings } from "@t3tools/client-runtime/state/project-grouping";
+import { requestProviderHandoff } from "../providerHandoffBus";
 import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { buildSidebarProjectSnapshots } from "../sidebarProjectGrouping";
@@ -122,6 +125,12 @@ export function installChatRouteCommands(router: AnyRouter): () => void {
         claim(event);
         void scratch.startScratchThread(environmentId);
       },
+      "thread.handoff": (event) => {
+        const threadRef = readRouteThreadRef();
+        if (!threadRef) return;
+        claim(event);
+        requestProviderHandoff({ threadRef });
+      },
       "chat.new": (event) => {
         // The boring sidebar's folders already show the context, so it starts in
         // the current project like the legacy sidebar did.
@@ -181,6 +190,16 @@ export function installChatRouteCommands(router: AnyRouter): () => void {
               ).terminalOpen
             : false,
           previewOpen: readPreviewOpen(),
+        };
+      },
+      resolveCommand: (command) => {
+        const slug = projectSlugFromNewThreadCommand(command);
+        if (slug === null) return undefined;
+        return (event) => {
+          const project = findProjectForSlug(readProjects(), slug);
+          if (!project) return false;
+          claim(event);
+          void handleNewThread(scopeProjectRef(project.environmentId, project.id));
         };
       },
       onKeyDown: (event) => {

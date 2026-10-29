@@ -1,4 +1,5 @@
 import { msg } from "gt-react";
+import { showLibrarianFiling } from "../../lib/librarianFiling";
 import { thrownErrorMessage } from "@t3tools/client-runtime/errors";
 import { m } from "~/i18n/messages";
 import {
@@ -122,6 +123,9 @@ export function useMultipleModelSend(input: MultipleModelSendInput) {
     readonly draftChangedDuringPreparation: () => boolean;
   }) => {
     const { attachments: attachmentsSnapshot, messageText } = sendSnapshot;
+    const librarian = draftId
+      ? useComposerDraftStore.getState().getDraftSession(draftId)?.librarian === true
+      : false;
     const failedSelections: ModelSelection[] = [];
     let clearedDraft = false;
     let releasedComposer = false;
@@ -169,11 +173,12 @@ export function useMultipleModelSend(input: MultipleModelSendInput) {
             ]),
             model: target.selection.model,
             uncertainSubmissions: uncertainSubmissionsRef.current,
-            start: (targetThreadId) => {
-              return startThreadTurn({
+            start: async (targetThreadId) => {
+              const result = await startThreadTurn({
                 environmentId,
                 input: {
                   threadId: targetThreadId,
+                  ...(librarian ? { librarian: true } : {}),
                   message: {
                     messageId: newMessageId(),
                     role: "user",
@@ -210,6 +215,8 @@ export function useMultipleModelSend(input: MultipleModelSendInput) {
                   createdAt: createdAt,
                 },
               });
+              if (result._tag === "Success") showLibrarianFiling(result.value);
+              return result;
             },
             openThread: (threadId) =>
               void navigate({

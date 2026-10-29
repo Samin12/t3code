@@ -1,3 +1,6 @@
+import * as ProjectLibrarian from "../librarian/ProjectLibrarian.ts";
+import { routeLaunch } from "../librarian/launchRouting.ts";
+import * as KeyedLock from "@t3tools/shared/KeyedLock";
 import * as WorktreeSetupTracker from "../project/WorktreeSetupTracker.ts";
 import * as ProjectCloneTracker from "../project/ProjectCloneTracker.ts";
 import * as TerminalManager from "../terminal/Manager.ts";
@@ -97,6 +100,7 @@ export interface ThreadLaunchInitialMessage {
 }
 
 export interface ThreadLaunchInput {
+  readonly librarian?: boolean;
   readonly commandId: CommandId;
   readonly threadId?: ThreadId;
   readonly reuseExistingThread?: boolean;
@@ -138,6 +142,7 @@ export interface ThreadLaunchPreparationInput {
 }
 
 export interface ThreadLaunchResult {
+  readonly librarian?: import("@t3tools/contracts").OrchestrationV2LibrarianFiling;
   readonly threadId: ThreadId;
   readonly projection: OrchestrationV2ThreadProjection;
   /** The launch's last write (the initial message, else the thread claim) was accepted before this call. */
@@ -274,6 +279,7 @@ function failureDetail(error: unknown): string {
 }
 
 const make = Effect.gen(function* () {
+  const librarian = yield* Effect.serviceOption(ProjectLibrarian.ProjectLibrarian);
   const projects = yield* ProjectService.ProjectService;
   const setupTracker = yield* WorktreeSetupTracker.WorktreeSetupTracker;
   const cloneTracker = yield* ProjectCloneTracker.ProjectCloneTracker;
@@ -295,6 +301,7 @@ const make = Effect.gen(function* () {
     strategy.type === "root" && strategy.branch === undefined
       ? git.currentBranch(workspaceRoot).pipe(Effect.orElseSucceed(() => null))
       : Effect.succeed(strategy.branch ?? null);
+  const launchLocks = yield* KeyedLock.make<CommandId>();
   const preparationScope = yield* Scope.make("sequential");
   const scheduledLaunches = yield* Ref.make<ReadonlySet<CommandId>>(new Set());
   yield* Effect.addFinalizer(() => Scope.close(preparationScope, Exit.void));
@@ -1331,6 +1338,16 @@ const make = Effect.gen(function* () {
 
   const launch: ThreadLaunchService["Service"]["launch"] = Effect.fn("ThreadLaunchService.launch")(
     function* (request) {
+      const routed = yield* routeLaunch(request).pipe(
+        Effect.provideService(CommandReceiptStore.CommandReceiptStoreV2, receipts),
+        Effect.provideService(ThreadManagement.ThreadManagementService, threads),
+        Effect.provideService(ProjectService.ProjectService, projects),
+        Effect.provideService(ServerSettings.ServerSettingsService, serverSettings),
+        Option.isSome(librarian)
+          ? Effect.provideService(ProjectLibrarian.ProjectLibrarian, librarian.value)
+          : (effect) => effect,
+      );
+      request = routed.input;
       // Scratch has no Git repository. Normalize before folder allocation so
       // durable preparation and retries use the thread's own Scratch folder.
       const input: ThreadLaunchInput =
@@ -1590,9 +1607,14 @@ const make = Effect.gen(function* () {
           .getThreadProjection(threadId)
           .pipe(Effect.mapError(mapError(input, "create-thread", threadId)));
 
+        if (routed.filing) {
+          if (Option.isSome(librarian))
+            yield* librarian.value.record(threadId, routed.filing).pipe(Effect.ignoreCause);
+        }
         return {
           threadId,
           projection,
+          ...(routed.filing ? { librarian: routed.filing } : {}),
           // An attempt that failed after claiming the thread recorded nothing, so
           // only a repeat of the final write counts as resumed.
           resumed:
@@ -1606,6 +1628,8 @@ const make = Effect.gen(function* () {
     // The message commits a preparing run that only this call schedules, so a
     // caller that goes away must not stop the launch between the two.
     Effect.uninterruptible,
+    (effect, request) =>
+      request.librarian === true ? launchLocks.withLock(request.commandId, effect) : effect,
   );
 
   const prepareRun: ThreadLaunchService["Service"]["prepareRun"] = Effect.fn(

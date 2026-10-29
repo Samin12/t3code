@@ -151,6 +151,7 @@ export interface EnvironmentThreadShell {
   readonly id: ThreadId;
   readonly projectId: ProjectId;
   readonly title: string;
+  readonly callName?: string;
   readonly providerInstanceId: ProviderInstanceId;
   readonly modelSelection: OrchestrationV2ThreadShell["modelSelection"];
   readonly runtimeMode: OrchestrationV2ThreadShell["runtimeMode"];
@@ -296,6 +297,7 @@ export function presentThreadShell(
     environmentId,
     id: thread.id,
     projectId: thread.projectId,
+    ...(thread.callName === undefined ? {} : { callName: thread.callName }),
     title:
       thread.lineage.relationshipToParent === "subagent"
         ? formatSubagentDisplayTitle(thread.title)

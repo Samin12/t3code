@@ -13,6 +13,7 @@ import {
   type DraftThreadState,
   useComposerDraftStore,
 } from "../composerDraftStore";
+import { draftUsesLibrarian } from "../lib/librarianDraft";
 import { newDraftId, newThreadId } from "../lib/utils";
 import { orderItemsByPreferredIds } from "../components/Sidebar.logic";
 import {
@@ -97,6 +98,7 @@ export function createNewThreadHandler(router: AnyRouter) {
   return (
     projectRef: ScopedProjectRef,
     options?: {
+      librarian?: boolean;
       branch?: string | null;
       worktreePath?: string | null;
       envMode?: DraftThreadEnvMode;
@@ -125,6 +127,9 @@ export function createNewThreadHandler(router: AnyRouter) {
     } = useComposerDraftStore.getState();
     // Never over text the user wrote: a draft can gain some while this awaits.
     const seedPrompt = (draftId: DraftId) => {
+      setDraftThreadContext(draftId, {
+        librarian: draftUsesLibrarian(getClientSettings().newThreadsUseLibrarian, options),
+      });
       if (options?.prompt === undefined) return;
       if (composerDraftHasUserContent(getComposerDraft(draftId))) return;
       setPrompt(draftId, options.prompt);

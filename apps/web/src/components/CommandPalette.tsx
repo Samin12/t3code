@@ -808,7 +808,7 @@ function OpenCommandPaletteDialog(props: {
       return;
     }
 
-    await handleNewThread(scopeProjectRef(project.environmentId, project.id));
+    await handleNewThread(scopeProjectRef(project.environmentId, project.id), { librarian: false });
   };
 
   // Pinning from a row keeps rows in place while the palette is open.
@@ -846,6 +846,7 @@ function OpenCommandPaletteDialog(props: {
             contextualRefBelongsToGroup
               ? contextualProjectRef
               : scopeProjectRef(project.environmentId, project.id),
+            { librarian: false },
           );
         },
       });
@@ -1865,7 +1866,9 @@ function OpenCommandPaletteDialog(props: {
         });
       } else {
         const navigationResult = await settlePromise(() =>
-          handleNewThread(scopeProjectRef(existing.environmentId, existing.id)),
+          handleNewThread(scopeProjectRef(existing.environmentId, existing.id), {
+            librarian: false,
+          }),
         );
         if (navigationResult._tag === "Failure") {
           const error = squashAtomCommandFailure(navigationResult);
@@ -1919,7 +1922,7 @@ function OpenCommandPaletteDialog(props: {
     }
 
     const navigationResult = await settlePromise(() =>
-      handleNewThread(scopeProjectRef(input.environmentId, projectId)),
+      handleNewThread(scopeProjectRef(input.environmentId, projectId), { librarian: false }),
     );
     if (navigationResult._tag === "Failure") {
       const error = squashAtomCommandFailure(navigationResult);
@@ -2174,7 +2177,9 @@ function OpenCommandPaletteDialog(props: {
     );
     const projectRef = scopeProjectRef(addProjectCloneFlow.environmentId, projectId);
     await waitForProject(projectRef, 3_000).catch(() => null);
-    const navigationResult = await settlePromise(() => handleNewThread(projectRef));
+    const navigationResult = await settlePromise(() =>
+      handleNewThread(projectRef, { librarian: false }),
+    );
     if (navigationResult._tag === "Failure") {
       const error = squashAtomCommandFailure(navigationResult);
       toastManager.add(

@@ -30,6 +30,7 @@ import { resolveRuntimeMode } from "../../delegatedTaskModes.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import { newCommandId, readCaller, resolveProjectId, unavailable } from "../../threadAccess.ts";
+import { resolveLibrarianFallback } from "../../../librarian/fallback.ts";
 import { ProjectToolkit } from "./tools.ts";
 
 const isAboveCeilingError = Schema.is(OrchestratorRuntimeModeAboveCeilingError);
@@ -108,12 +109,14 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
           });
         if (
           input.scratch === true &&
-          (input.projectId !== undefined || input.workspaceStrategy !== undefined)
+          (input.projectId !== undefined ||
+            input.workspaceStrategy !== undefined ||
+            input.librarian === true)
         )
           return yield* new OrchestratorMcpFailure({
             code: "invalid_request",
             message:
-              "scratch:true picks its own project and folder; omit projectId and workspaceStrategy.",
+              "scratch:true picks its own project and folder; omit projectId, workspaceStrategy and librarian.",
           });
         const projectId =
           input.scratch === true
@@ -127,7 +130,9 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
                     }),
                 ),
               )).projectId
-            : yield* resolveProjectId(context, input.projectId);
+            : input.librarian === true && input.projectId === undefined && caller === undefined
+              ? yield* resolveLibrarianFallback().pipe(Effect.mapError(unavailable))
+              : yield* resolveProjectId(context, input.projectId);
         const readProject = Project.ProjectService.pipe(
           Effect.flatMap((projects) => projects.getById(projectId)),
           Effect.mapError(unavailable),
@@ -229,6 +234,7 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
           commandId,
           threadId,
           projectId,
+          ...(input.librarian === undefined ? {} : { librarian: input.librarian }),
           title: input.title,
           modelSelection,
           runtimeMode: startedRuntimeMode,
@@ -280,6 +286,7 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
           ...(thread.callName === undefined ? {} : { callName: thread.callName }),
           link: McpInvocationContext.threadLinkFor(scope, thread.id),
           projectId: thread.projectId,
+          ...(result.librarian ? { librarian: result.librarian } : {}),
           modelSelection: thread.modelSelection,
           runId: run?.id ?? null,
           status: run?.status ?? null,

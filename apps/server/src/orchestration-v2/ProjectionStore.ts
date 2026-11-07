@@ -1987,7 +1987,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
     );
 
     const inlineWorkOutput = sql`item.type = 'dynamic_tool' AND (
-      item.payload_json LIKE '%htmlRender%' OR item.payload_json LIKE ${`%${MCP_APP_OUTPUT_KEY}%`}
+      item.payload_json LIKE '%htmlRender%' OR item.payload_json LIKE '%end_turn%' OR item.payload_json LIKE ${`%${MCP_APP_OUTPUT_KEY}%`}
       OR item.payload_json LIKE '%"viewedImagePath"%'
       OR item.payload_json LIKE '%"toolName":"%delegate_task"%')`;
 
@@ -5593,7 +5593,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
       FROM orchestration_v2_projection_turn_items
       WHERE thread_id = ${threadId}
         AND type = 'dynamic_tool'
-        AND (payload_json LIKE '%htmlRender%' OR payload_json LIKE ${`%${MCP_APP_OUTPUT_KEY}%`}
+        AND (payload_json LIKE '%htmlRender%' OR payload_json LIKE '%end_turn%' OR payload_json LIKE ${`%${MCP_APP_OUTPUT_KEY}%`}
           OR payload_json LIKE '%preview_recording_stop%')
     `,
         sql<{ id: string }>`

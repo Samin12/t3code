@@ -196,7 +196,9 @@ export function installChatRouteCommands(router: AnyRouter): () => void {
           const project = findProjectForSlug(readProjects(), slug);
           if (!project) return false;
           claim(event);
-          void handleNewThread(scopeProjectRef(project.environmentId, project.id));
+          void handleNewThread(scopeProjectRef(project.environmentId, project.id), {
+            librarian: false,
+          });
         };
       },
       onKeyDown: (event) => {

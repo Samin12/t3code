@@ -469,6 +469,9 @@ export function summarizeT3ToolCalls(
     case "html-preview":
       label = phrase("Previewed", "preview", quantity(selected.length, "HTML page"));
       break;
+    case "decisions":
+      label = phrase("Prepared", "prepare", quantity(selected.length, "decision card"));
+      break;
     case "html-render":
       label = phrase("Rendered", "render", quantity(selected.length, "HTML page"));
       break;

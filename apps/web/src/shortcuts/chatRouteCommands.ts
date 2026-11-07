@@ -132,10 +132,12 @@ export function installChatRouteCommands(router: AnyRouter): () => void {
         requestProviderHandoff({ threadRef });
       },
       "chat.new": (event) => {
-        const { legacySidebarEnabled } = getClientSettings();
+        const { legacySidebarEnabled, newThreadsUseLibrarian } = getClientSettings();
         const groups = readProjectGroups();
+        // The librarian picks the project on send, so there's no "new thread in…" picker.
         if (
           !legacySidebarEnabled &&
+          !newThreadsUseLibrarian &&
           !shouldCreateNewThreadInCurrentProject(
             false,
             groups.filter((group) => !group.archived).length,
@@ -196,9 +198,9 @@ export function installChatRouteCommands(router: AnyRouter): () => void {
           const project = findProjectForSlug(readProjects(), slug);
           if (!project) return false;
           claim(event);
-          void handleNewThread(scopeProjectRef(project.environmentId, project.id), {
-            librarian: false,
-          });
+          // A home-project shortcut (Samin's mod+shift+n for SaminOS) opens a librarian draft
+          // with that project as its fallback, while new threads use the librarian.
+          void handleNewThread(scopeProjectRef(project.environmentId, project.id));
         };
       },
       onKeyDown: (event) => {
